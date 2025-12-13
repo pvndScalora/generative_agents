@@ -5,6 +5,7 @@ File: perceive.py
 Description: This defines the "Perceive" module for generative agents. 
 """
 import sys
+import logging
 sys.path.append('../../')
 
 from operator import itemgetter

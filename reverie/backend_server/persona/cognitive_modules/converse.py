@@ -6,6 +6,7 @@ Description: An extra cognitive module for generating conversations.
 """
 import math
 import sys
+import logging
 import datetime
 import random
 sys.path.append('../')
@@ -217,12 +218,12 @@ def generate_action_event_triple(act_desp, persona):
   EXAMPLE OUTPUT: 
     "🧈🍞"
   """
-  if DEBUG: print ("GNS FUNCTION: <generate_action_event_triple>")
+  logging.debug("GNS FUNCTION: <generate_action_event_triple>")
   return run_gpt_prompt_event_triple(act_desp, persona)[0]
 
 
 def generate_poig_score(persona, event_type, description): 
-  if DEBUG: print ("GNS FUNCTION: <generate_poig_score>")
+  logging.debug("GNS FUNCTION: <generate_poig_score>")
 
   if "is idle" in description: 
     return 1
