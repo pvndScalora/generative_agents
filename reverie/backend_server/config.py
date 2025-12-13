@@ -1,8 +1,12 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Base directory of the backend_server package
 BASE_DIR = Path(__file__).resolve().parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / ".env")
 
 # Project root (generative_agents/)
 PROJECT_ROOT = BASE_DIR.parent.parent
@@ -27,6 +31,8 @@ COLLISION_BLOCK_ID = "32125"
 DEBUG = True
 
 # API Keys
-# Try to get from environment variable, fallback to the hardcoded one (for now)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-KEY_OWNER = os.getenv("KEY_OWNER", "pvnd")
+KEY_OWNER = os.getenv("KEY_OWNER")
+
+if not OPENAI_API_KEY:
+    print("Warning: OPENAI_API_KEY not found in environment variables.")
