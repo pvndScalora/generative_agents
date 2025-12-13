@@ -66,3 +66,57 @@ reverie/
 │   │   └── cognitive_modules/  # Perception, Planning, Reflection
 │   └── prompt_template/        # LLM Prompts (GPT inputs)
 ```
+
+---
+
+## 🧠 Deep Dive: Agent Interactions (First Principles)
+
+How do two independent AI agents actually "talk"? It's not magic; it's a sequence of data processing steps. We can break down an interaction into five fundamental stages.
+
+### 1. Discovery (The Physics of Meeting)
+Before agents can talk, they must exist in the same space.
+*   **Principle**: **Proximity**.
+*   **Mechanism**: The `Maze` calculates the Euclidean distance between Agent A and Agent B.
+*   **Code**: In `perceive.py`, the system checks if another agent is within the `vision_radius` (usually 4-8 tiles).
+*   **Result**: Agent A's `perceived_events` list now includes `("Agent B", "is", "present")`.
+
+### 2. Contextualization (The Memory Lookup)
+Seeing someone isn't enough; you need to know *who* they are to you.
+*   **Principle**: **Associative Retrieval**.
+*   **Mechanism**: The agent queries its `AssociativeMemory` using the name "Agent B" as the query key.
+*   **Ranking**: The memory returns results based on:
+    1.  **Recency**: "Did we talk yesterday?"
+    2.  **Importance**: "Is this my wife or a stranger?"
+    3.  **Relevance**: "Does this relate to my current goal?"
+*   **Result**: Agent A retrieves a summary: *"Agent B is my neighbor who likes gardening."*
+
+### 3. Decision (The Cognitive Filter)
+Just because you see someone doesn't mean you stop to chat. You might be busy.
+*   **Principle**: **Opportunity Cost**.
+*   **Mechanism**: The `decide_to_talk()` function runs a logic check (often an LLM call).
+*   **Input**:
+    *   Current Plan: "I am rushing to the bathroom." (High Urgency)
+    *   Relationship: "Agent B is a stranger." (Low Importance)
+*   **Output**: `False` (Ignore) or `True` (Initiate Conversation).
+
+### 4. Execution (The Dialogue Loop)
+If the decision is `True`, the simulation enters a "Conversation Mode".
+*   **Principle**: **Generative State**.
+*   **Mechanism**:
+    1.  **Prompt Engineering**: The system constructs a massive text prompt containing:
+        *   Agent A's Persona (Traits, Mood).
+        *   Agent A's Goal ("I want to ask about the party").
+        *   The Memory Context ("I know Agent B likes parties").
+        *   The Previous Dialogue History.
+    2.  **LLM Generation**: The LLM generates the next line of dialogue.
+    3.  **Turn-Taking**: The system passes the new line to Agent B, who repeats the process.
+
+### 5. Consequence (Memory Formation)
+When the conversation ends, it must not be forgotten.
+*   **Principle**: **Compression**.
+*   **Mechanism**: Storing the full raw text is inefficient and distracts future retrievals.
+*   **Process**:
+    1.  **Summarization**: An LLM summarizes the 20-line chat into: *"Agent A invited Agent B to the Valentine's party."*
+    2.  **Storage**: This summary is saved as a new `ConceptNode` in the `AssociativeMemory`.
+    3.  **Reflection**: Later, this node might trigger a reflection: *"I am hosting a party" -> "I need to buy drinks."*
+
