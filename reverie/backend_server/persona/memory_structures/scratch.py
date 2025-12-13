@@ -9,18 +9,18 @@ import json
 import sys
 sys.path.append('../../')
 
+from reverie.backend_server.models import PersonaIdentity, CognitiveParams
 from global_methods import check_if_file_exists
 
 class Scratch: 
   def __init__(self, f_saved): 
-    # PERSONA HYPERPARAMETERS
-    # <vision_r> denotes the number of tiles that the persona can see around 
-    # them. 
-    self.vision_r = 4
-    # <att_bandwidth> TODO 
-    self.att_bandwidth = 3
-    # <retention> TODO 
-    self.retention = 5
+    # Initialize Data Models
+    self.identity = PersonaIdentity(
+        name="Placeholder Name", 
+        age=0,
+        innate="", learned="", currently="", lifestyle="", living_area=""
+    )
+    self.cognitive_params = CognitiveParams()
 
     # WORLD INFORMATION
     # Perceived world time. 
@@ -30,39 +30,6 @@ class Scratch:
     # Perceived world daily requirement. 
     self.daily_plan_req = None
     
-    # THE CORE IDENTITY OF THE PERSONA 
-    # Base information about the persona.
-    self.name = None
-    self.first_name = None
-    self.last_name = None
-    self.age = None
-    # L0 permanent core traits.  
-    self.innate = None
-    # L1 stable traits.
-    self.learned = None
-    # L2 external implementation. 
-    self.currently = None
-    self.lifestyle = None
-    self.living_area = None
-
-    # REFLECTION VARIABLES
-    self.concept_forget = 100
-    self.daily_reflection_time = 60 * 3
-    self.daily_reflection_size = 5
-    self.overlap_reflect_th = 2
-    self.kw_strg_event_reflect_th = 4
-    self.kw_strg_thought_reflect_th = 4
-
-    # New reflection variables
-    self.recency_w = 1
-    self.relevance_w = 1
-    self.importance_w = 1
-    self.recency_decay = 0.99
-    self.importance_trigger_max = 150
-    self.importance_trigger_curr = self.importance_trigger_max
-    self.importance_ele_n = 0 
-    self.thought_count = 5
-
     # PERSONA PLANNING 
     # <daily_req> is a list of various goals the persona is aiming to achieve
     # today. 
@@ -124,7 +91,7 @@ class Scratch:
     self.act_pronunciatio = None
     # <event_form> represents the event triple that the persona is currently 
     # engaged in. 
-    self.act_event = (self.name, None, None)
+    self.act_event = (self.identity.name, None, None)
 
     # <obj_description> is a string description of the object action. 
     self.act_obj_description = None
@@ -133,7 +100,7 @@ class Scratch:
     self.act_obj_pronunciatio = None
     # <obj_event_form> represents the event triple that the action object is  
     # currently engaged in. 
-    self.act_obj_event = (self.name, None, None)
+    self.act_obj_event = (self.identity.name, None, None)
 
     # <chatting_with> is the string name of the persona that the current 
     # persona is chatting with. None if it does not exist. 
@@ -162,9 +129,9 @@ class Scratch:
       # If we have a bootstrap file, load that here. 
       scratch_load = json.load(open(f_saved))
 
-      self.vision_r = scratch_load["vision_r"]
-      self.att_bandwidth = scratch_load["att_bandwidth"]
-      self.retention = scratch_load["retention"]
+      self.cognitive_params.vision_r = scratch_load["vision_r"]
+      self.cognitive_params.att_bandwidth = scratch_load["att_bandwidth"]
+      self.cognitive_params.retention = scratch_load["retention"]
 
       if scratch_load["curr_time"]: 
         self.curr_time = datetime.datetime.strptime(scratch_load["curr_time"],
@@ -174,31 +141,29 @@ class Scratch:
       self.curr_tile = scratch_load["curr_tile"]
       self.daily_plan_req = scratch_load["daily_plan_req"]
 
-      self.name = scratch_load["name"]
-      self.first_name = scratch_load["first_name"]
-      self.last_name = scratch_load["last_name"]
-      self.age = scratch_load["age"]
-      self.innate = scratch_load["innate"]
-      self.learned = scratch_load["learned"]
-      self.currently = scratch_load["currently"]
-      self.lifestyle = scratch_load["lifestyle"]
-      self.living_area = scratch_load["living_area"]
+      self.identity.name = scratch_load["name"]
+      self.identity.age = scratch_load["age"]
+      self.identity.innate = scratch_load["innate"]
+      self.identity.learned = scratch_load["learned"]
+      self.identity.currently = scratch_load["currently"]
+      self.identity.lifestyle = scratch_load["lifestyle"]
+      self.identity.living_area = scratch_load["living_area"]
 
-      self.concept_forget = scratch_load["concept_forget"]
-      self.daily_reflection_time = scratch_load["daily_reflection_time"]
-      self.daily_reflection_size = scratch_load["daily_reflection_size"]
-      self.overlap_reflect_th = scratch_load["overlap_reflect_th"]
-      self.kw_strg_event_reflect_th = scratch_load["kw_strg_event_reflect_th"]
-      self.kw_strg_thought_reflect_th = scratch_load["kw_strg_thought_reflect_th"]
+      self.cognitive_params.concept_forget = scratch_load["concept_forget"]
+      self.cognitive_params.daily_reflection_time = scratch_load["daily_reflection_time"]
+      self.cognitive_params.daily_reflection_size = scratch_load["daily_reflection_size"]
+      self.cognitive_params.overlap_reflect_th = scratch_load["overlap_reflect_th"]
+      self.cognitive_params.kw_strg_event_reflect_th = scratch_load["kw_strg_event_reflect_th"]
+      self.cognitive_params.kw_strg_thought_reflect_th = scratch_load["kw_strg_thought_reflect_th"]
 
-      self.recency_w = scratch_load["recency_w"]
-      self.relevance_w = scratch_load["relevance_w"]
-      self.importance_w = scratch_load["importance_w"]
-      self.recency_decay = scratch_load["recency_decay"]
-      self.importance_trigger_max = scratch_load["importance_trigger_max"]
-      self.importance_trigger_curr = scratch_load["importance_trigger_curr"]
-      self.importance_ele_n = scratch_load["importance_ele_n"]
-      self.thought_count = scratch_load["thought_count"]
+      self.cognitive_params.recency_weight = scratch_load["recency_w"]
+      self.cognitive_params.relevance_weight = scratch_load["relevance_w"]
+      self.cognitive_params.importance_weight = scratch_load["importance_w"]
+      self.cognitive_params.recency_decay = scratch_load["recency_decay"]
+      self.cognitive_params.importance_trigger_max = scratch_load["importance_trigger_max"]
+      self.cognitive_params.importance_trigger_curr = scratch_load["importance_trigger_curr"]
+      self.cognitive_params.importance_ele_n = scratch_load["importance_ele_n"]
+      self.cognitive_params.thought_count = scratch_load.get("thought_count", 5)
 
       self.daily_req = scratch_load["daily_req"]
       self.f_daily_schedule = scratch_load["f_daily_schedule"]
@@ -210,7 +175,8 @@ class Scratch:
                                               scratch_load["act_start_time"],
                                               "%B %d, %Y, %H:%M:%S")
       else: 
-        self.curr_time = None
+        self.act_start_time = None # Fixed: was self.curr_time = None in original code which looked like a bug or copy paste error
+      
       self.act_duration = scratch_load["act_duration"]
       self.act_description = scratch_load["act_description"]
       self.act_pronunciatio = scratch_load["act_pronunciatio"]
@@ -232,6 +198,137 @@ class Scratch:
 
       self.act_path_set = scratch_load["act_path_set"]
       self.planned_path = scratch_load["planned_path"]
+
+  # PROPERTIES FOR BACKWARD COMPATIBILITY
+  @property
+  def vision_r(self): return self.cognitive_params.vision_r
+  @vision_r.setter
+  def vision_r(self, value): self.cognitive_params.vision_r = value
+
+  @property
+  def att_bandwidth(self): return self.cognitive_params.att_bandwidth
+  @att_bandwidth.setter
+  def att_bandwidth(self, value): self.cognitive_params.att_bandwidth = value
+
+  @property
+  def retention(self): return self.cognitive_params.retention
+  @retention.setter
+  def retention(self, value): self.cognitive_params.retention = value
+
+  @property
+  def name(self): return self.identity.name
+  @name.setter
+  def name(self, value): self.identity.name = value
+
+  @property
+  def first_name(self): return self.identity.name.split(" ")[0] if self.identity.name else ""
+  @first_name.setter
+  def first_name(self, value): pass 
+
+  @property
+  def last_name(self): return self.identity.name.split(" ")[-1] if self.identity.name else ""
+  @last_name.setter
+  def last_name(self, value): pass 
+
+  @property
+  def age(self): return self.identity.age
+  @age.setter
+  def age(self, value): self.identity.age = value
+
+  @property
+  def innate(self): return self.identity.innate
+  @innate.setter
+  def innate(self, value): self.identity.innate = value
+
+  @property
+  def learned(self): return self.identity.learned
+  @learned.setter
+  def learned(self, value): self.identity.learned = value
+
+  @property
+  def currently(self): return self.identity.currently
+  @currently.setter
+  def currently(self, value): self.identity.currently = value
+
+  @property
+  def lifestyle(self): return self.identity.lifestyle
+  @lifestyle.setter
+  def lifestyle(self, value): self.identity.lifestyle = value
+
+  @property
+  def living_area(self): return self.identity.living_area
+  @living_area.setter
+  def living_area(self, value): self.identity.living_area = value
+
+  @property
+  def concept_forget(self): return self.cognitive_params.concept_forget
+  @concept_forget.setter
+  def concept_forget(self, value): self.cognitive_params.concept_forget = value
+
+  @property
+  def daily_reflection_time(self): return self.cognitive_params.daily_reflection_time
+  @daily_reflection_time.setter
+  def daily_reflection_time(self, value): self.cognitive_params.daily_reflection_time = value
+
+  @property
+  def daily_reflection_size(self): return self.cognitive_params.daily_reflection_size
+  @daily_reflection_size.setter
+  def daily_reflection_size(self, value): self.cognitive_params.daily_reflection_size = value
+
+  @property
+  def overlap_reflect_th(self): return self.cognitive_params.overlap_reflect_th
+  @overlap_reflect_th.setter
+  def overlap_reflect_th(self, value): self.cognitive_params.overlap_reflect_th = value
+
+  @property
+  def kw_strg_event_reflect_th(self): return self.cognitive_params.kw_strg_event_reflect_th
+  @kw_strg_event_reflect_th.setter
+  def kw_strg_event_reflect_th(self, value): self.cognitive_params.kw_strg_event_reflect_th = value
+
+  @property
+  def kw_strg_thought_reflect_th(self): return self.cognitive_params.kw_strg_thought_reflect_th
+  @kw_strg_thought_reflect_th.setter
+  def kw_strg_thought_reflect_th(self, value): self.cognitive_params.kw_strg_thought_reflect_th = value
+
+  @property
+  def recency_w(self): return self.cognitive_params.recency_weight
+  @recency_w.setter
+  def recency_w(self, value): self.cognitive_params.recency_weight = value
+
+  @property
+  def relevance_w(self): return self.cognitive_params.relevance_weight
+  @relevance_w.setter
+  def relevance_w(self, value): self.cognitive_params.relevance_weight = value
+
+  @property
+  def importance_w(self): return self.cognitive_params.importance_weight
+  @importance_w.setter
+  def importance_w(self, value): self.cognitive_params.importance_weight = value
+
+  @property
+  def recency_decay(self): return self.cognitive_params.recency_decay
+  @recency_decay.setter
+  def recency_decay(self, value): self.cognitive_params.recency_decay = value
+
+  @property
+  def importance_trigger_max(self): return self.cognitive_params.importance_trigger_max
+  @importance_trigger_max.setter
+  def importance_trigger_max(self, value): self.cognitive_params.importance_trigger_max = value
+
+  @property
+  def importance_trigger_curr(self): return self.cognitive_params.importance_trigger_curr
+  @importance_trigger_curr.setter
+  def importance_trigger_curr(self, value): self.cognitive_params.importance_trigger_curr = value
+
+  @property
+  def importance_ele_n(self): return self.cognitive_params.importance_ele_n
+  @importance_ele_n.setter
+  def importance_ele_n(self, value): self.cognitive_params.importance_ele_n = value
+
+  @property
+  def thought_count(self): return self.cognitive_params.thought_count
+  @thought_count.setter
+  def thought_count(self, value): self.cognitive_params.thought_count = value
 
 
   def save(self, out_json):

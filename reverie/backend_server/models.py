@@ -108,6 +108,7 @@ class PersonaIdentity:
         )
     """
     name: str
+    age: int # Age of the persona
     innate: str # L0 traits (Core personality)
     learned: str # L1 traits (Backstory/Occupation)
     currently: str # L2 status (Current goal/Context)
@@ -135,6 +136,20 @@ class CognitiveParams:
     # Reflection Triggers
     importance_trigger_max: int = 150 # Threshold to trigger reflection
     importance_trigger_curr: int = 150 # Current counter
+    importance_ele_n: int = 0
+    thought_count: int = 5
     
+    # Reflection Tuning
+    concept_forget: int = 100
+    daily_reflection_time: int = 60 * 3
+    overlap_reflect_th: int = 2
+    kw_strg_event_reflect_th: int = 4
+    kw_strg_thought_reflect_th: int = 4
+
     # Planning
     daily_reflection_size: int = 5 # Number of focal points to generate
+
+    # Perception & Attention
+    vision_r: int = 4 # Number of tiles the persona can see
+    att_bandwidth: int = 3 # Attention bandwidth
+    retention: int = 5 # Memory retention factor

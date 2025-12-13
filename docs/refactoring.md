@@ -103,4 +103,8 @@ To achieve robustness and modularity, we will move from a "God Object" pattern t
 1.  **Phase 1: Cleanup** - Fix imports, add `__init__.py`, and set up `logging`.
 2.  **Phase 2: Configuration** - Extract magic numbers and paths to `config.py`.
 3.  **Phase 3: Typing** - Introduce `models.py` with Dataclasses for core entities.
-4.  **Phase 4: Core Refactoring** - Implement the 5-point strategy above (Deconstruct Persona, Abstract Modules, Memory Repo, LLM Gateway).
+4.  **Phase 4: Core Refactoring**
+    *   **Data Model Integration:** Refactor `scratch.py`, `associative_memory.py`, and `spatial_memory.py` to use the new `models.py` dataclasses (`PersonaIdentity`, `Action`, `Memory`, `Coordinate`).
+    *   **Module Abstraction:** Refactor `plan.py` and `retrieve.py` to use the Strategy Pattern, allowing for swappable implementations.
+    *   **Persona Deconstruction:** Update the main `Persona` class to act as a controller, injecting dependencies into the cognitive modules.
+    *   **LLM Gateway:** Implement a centralized service for LLM calls with retry logic and cost tracking.
