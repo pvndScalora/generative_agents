@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Set, Dict, Any
+from typing import List, Optional, Set, Dict, Any, Tuple
 from datetime import datetime
 from enum import Enum
 
@@ -37,6 +37,24 @@ class Action:
         # Logic to check if this action needs further breakdown
         # Currently inferred from context in the original code
         return False
+
+@dataclass
+class CurrentAction:
+    """
+    Represents the action currently being executed by the persona.
+    Includes execution details like start time, location, and object interactions.
+    """
+    address: Optional[str] = None
+    start_time: Optional[datetime] = None
+    duration: Optional[int] = None
+    description: Optional[str] = None
+    pronunciatio: Optional[str] = None
+    event: Tuple[str, Optional[str], Optional[str]] = field(default_factory=lambda: ("", None, None))
+    
+    # Object interaction details
+    obj_description: Optional[str] = None
+    obj_pronunciatio: Optional[str] = None
+    obj_event: Tuple[str, Optional[str], Optional[str]] = field(default_factory=lambda: ("", None, None))
 
 class MemoryType(Enum):
     """

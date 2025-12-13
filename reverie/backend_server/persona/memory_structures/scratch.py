@@ -9,7 +9,7 @@ import json
 import sys
 sys.path.append('../../')
 
-from reverie.backend_server.models import PersonaIdentity, CognitiveParams
+from reverie.backend_server.models import PersonaIdentity, CognitiveParams, CurrentAction, Coordinate
 from global_methods import check_if_file_exists
 
 class Scratch: 
@@ -71,36 +71,9 @@ class Scratch:
     self.f_daily_schedule_hourly_org = []
     
     # CURR ACTION 
-    # <address> is literally the string address of where the action is taking 
-    # place.  It comes in the form of 
-    # "{world}:{sector}:{arena}:{game_objects}". It is important that you 
-    # access this without doing negative indexing (e.g., [-1]) because the 
-    # latter address elements may not be present in some cases. 
-    # e.g., "dolores double studio:double studio:bedroom 1:bed"
-    self.act_address = None
-    # <start_time> is a python datetime instance that indicates when the 
-    # action has started. 
-    self.act_start_time = None
-    # <duration> is the integer value that indicates the number of minutes an
-    # action is meant to last. 
-    self.act_duration = None
-    # <description> is a string description of the action. 
-    self.act_description = None
-    # <pronunciatio> is the descriptive expression of the self.description. 
-    # Currently, it is implemented as emojis. 
-    self.act_pronunciatio = None
-    # <event_form> represents the event triple that the persona is currently 
-    # engaged in. 
-    self.act_event = (self.identity.name, None, None)
-
-    # <obj_description> is a string description of the object action. 
-    self.act_obj_description = None
-    # <obj_pronunciatio> is the descriptive expression of the object action. 
-    # Currently, it is implemented as emojis. 
-    self.act_obj_pronunciatio = None
-    # <obj_event_form> represents the event triple that the action object is  
-    # currently engaged in. 
-    self.act_obj_event = (self.identity.name, None, None)
+    self.act = CurrentAction()
+    self.act.event = (self.identity.name, None, None)
+    self.act.obj_event = (self.identity.name, None, None)
 
     # <chatting_with> is the string name of the persona that the current 
     # persona is chatting with. None if it does not exist. 
@@ -169,22 +142,22 @@ class Scratch:
       self.f_daily_schedule = scratch_load["f_daily_schedule"]
       self.f_daily_schedule_hourly_org = scratch_load["f_daily_schedule_hourly_org"]
 
-      self.act_address = scratch_load["act_address"]
+      self.act.address = scratch_load["act_address"]
       if scratch_load["act_start_time"]: 
-        self.act_start_time = datetime.datetime.strptime(
+        self.act.start_time = datetime.datetime.strptime(
                                               scratch_load["act_start_time"],
                                               "%B %d, %Y, %H:%M:%S")
       else: 
-        self.act_start_time = None # Fixed: was self.curr_time = None in original code which looked like a bug or copy paste error
+        self.act.start_time = None 
       
-      self.act_duration = scratch_load["act_duration"]
-      self.act_description = scratch_load["act_description"]
-      self.act_pronunciatio = scratch_load["act_pronunciatio"]
-      self.act_event = tuple(scratch_load["act_event"])
+      self.act.duration = scratch_load["act_duration"]
+      self.act.description = scratch_load["act_description"]
+      self.act.pronunciatio = scratch_load["act_pronunciatio"]
+      self.act.event = tuple(scratch_load["act_event"])
 
-      self.act_obj_description = scratch_load["act_obj_description"]
-      self.act_obj_pronunciatio = scratch_load["act_obj_pronunciatio"]
-      self.act_obj_event = tuple(scratch_load["act_obj_event"])
+      self.act.obj_description = scratch_load["act_obj_description"]
+      self.act.obj_pronunciatio = scratch_load["act_obj_pronunciatio"]
+      self.act.obj_event = tuple(scratch_load["act_obj_event"])
 
       self.chatting_with = scratch_load["chatting_with"]
       self.chat = scratch_load["chat"]
@@ -329,6 +302,51 @@ class Scratch:
   def thought_count(self): return self.cognitive_params.thought_count
   @thought_count.setter
   def thought_count(self, value): self.cognitive_params.thought_count = value
+
+  @property
+  def act_address(self): return self.act.address
+  @act_address.setter
+  def act_address(self, value): self.act.address = value
+
+  @property
+  def act_start_time(self): return self.act.start_time
+  @act_start_time.setter
+  def act_start_time(self, value): self.act.start_time = value
+
+  @property
+  def act_duration(self): return self.act.duration
+  @act_duration.setter
+  def act_duration(self, value): self.act.duration = value
+
+  @property
+  def act_description(self): return self.act.description
+  @act_description.setter
+  def act_description(self, value): self.act.description = value
+
+  @property
+  def act_pronunciatio(self): return self.act.pronunciatio
+  @act_pronunciatio.setter
+  def act_pronunciatio(self, value): self.act.pronunciatio = value
+
+  @property
+  def act_event(self): return self.act.event
+  @act_event.setter
+  def act_event(self, value): self.act.event = value
+
+  @property
+  def act_obj_description(self): return self.act.obj_description
+  @act_obj_description.setter
+  def act_obj_description(self, value): self.act.obj_description = value
+
+  @property
+  def act_obj_pronunciatio(self): return self.act.obj_pronunciatio
+  @act_obj_pronunciatio.setter
+  def act_obj_pronunciatio(self, value): self.act.obj_pronunciatio = value
+
+  @property
+  def act_obj_event(self): return self.act.obj_event
+  @act_obj_event.setter
+  def act_obj_event(self, value): self.act.obj_event = value
 
 
   def save(self, out_json):
