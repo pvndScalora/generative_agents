@@ -109,6 +109,14 @@ class Memory:
     # filling: List of node_ids that served as evidence for this thought
     filling: List[Any] = field(default_factory=list) 
     expiration: Optional[datetime] = None
+    
+    # Legacy fields for compatibility
+    depth: int = 0
+    node_count: int = 0
+    type_count: int = 0
+
+    def spo_summary(self): 
+        return (self.subject, self.predicate, self.object)
 
 @dataclass
 class PersonaIdentity:

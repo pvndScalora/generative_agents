@@ -12,37 +12,7 @@ sys.path.append('../../')
 
 import json
 import datetime
-
-class ConceptNode: 
-  def __init__(self,
-               node_id, node_count, type_count, node_type, depth,
-               created, expiration, 
-               s, p, o, 
-               description, embedding_key, poignancy, keywords, filling): 
-    self.node_id = node_id
-    self.node_count = node_count
-    self.type_count = type_count
-    self.type = node_type # thought / event / chat
-    self.depth = depth
-
-    self.created = created
-    self.expiration = expiration
-    self.last_accessed = self.created
-
-    self.subject = s
-    self.predicate = p
-    self.object = o
-
-    self.description = description
-    self.embedding_key = embedding_key
-    self.poignancy = poignancy
-    self.keywords = keywords
-    self.filling = filling
-
-
-  def spo_summary(self): 
-    return (self.subject, self.predicate, self.object)
-
+from reverie.backend_server.models import Memory, MemoryType
 
 class AssociativeMemory: 
   def __init__(self, f_saved): 
@@ -115,7 +85,7 @@ class AssociativeMemory:
       r[node_id] = dict()
       r[node_id]["node_count"] = node.node_count
       r[node_id]["type_count"] = node.type_count
-      r[node_id]["type"] = node.type
+      r[node_id]["type"] = node.type.value if isinstance(node.type, MemoryType) else node.type
       r[node_id]["depth"] = node.depth
 
       r[node_id]["created"] = node.created.strftime('%Y-%m-%d %H:%M:%S')
@@ -163,12 +133,25 @@ class AssociativeMemory:
                      + " " 
                      +  description.split("(")[-1][:-1])
 
-    # Creating the <ConceptNode> object.
-    node = ConceptNode(node_id, node_count, type_count, node_type, depth,
-                       created, expiration, 
-                       s, p, o, 
-                       description, embedding_pair[0], 
-                       poignancy, keywords, filling)
+    # Creating the <Memory> object.
+    node = Memory(
+        id=node_id,
+        type=MemoryType.EVENT,
+        description=description,
+        created=created,
+        last_accessed=created,
+        subject=s,
+        predicate=p,
+        object=o,
+        poignancy=poignancy,
+        keywords=keywords,
+        embedding_key=embedding_pair[0],
+        filling=filling,
+        expiration=expiration,
+        depth=depth,
+        node_count=node_count,
+        type_count=type_count
+    )
 
     # Creating various dictionary cache for fast access. 
     self.seq_event[0:0] = [node]
@@ -208,11 +191,25 @@ class AssociativeMemory:
     except: 
       pass
 
-    # Creating the <ConceptNode> object.
-    node = ConceptNode(node_id, node_count, type_count, node_type, depth,
-                       created, expiration, 
-                       s, p, o, 
-                       description, embedding_pair[0], poignancy, keywords, filling)
+    # Creating the <Memory> object.
+    node = Memory(
+        id=node_id,
+        type=MemoryType.THOUGHT,
+        description=description,
+        created=created,
+        last_accessed=created,
+        subject=s,
+        predicate=p,
+        object=o,
+        poignancy=poignancy,
+        keywords=keywords,
+        embedding_key=embedding_pair[0],
+        filling=filling,
+        expiration=expiration,
+        depth=depth,
+        node_count=node_count,
+        type_count=type_count
+    )
 
     # Creating various dictionary cache for fast access. 
     self.seq_thought[0:0] = [node]
@@ -247,11 +244,25 @@ class AssociativeMemory:
     node_id = f"node_{str(node_count)}"
     depth = 0
 
-    # Creating the <ConceptNode> object.
-    node = ConceptNode(node_id, node_count, type_count, node_type, depth,
-                       created, expiration, 
-                       s, p, o, 
-                       description, embedding_pair[0], poignancy, keywords, filling)
+    # Creating the <Memory> object.
+    node = Memory(
+        id=node_id,
+        type=MemoryType.CHAT,
+        description=description,
+        created=created,
+        last_accessed=created,
+        subject=s,
+        predicate=p,
+        object=o,
+        poignancy=poignancy,
+        keywords=keywords,
+        embedding_key=embedding_pair[0],
+        filling=filling,
+        expiration=expiration,
+        depth=depth,
+        node_count=node_count,
+        type_count=type_count
+    )
 
     # Creating various dictionary cache for fast access. 
     self.seq_chat[0:0] = [node]
