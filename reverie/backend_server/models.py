@@ -17,6 +17,12 @@ class Coordinate:
     def as_tuple(self):
         return (self.x, self.y)
 
+    def __iter__(self):
+        return iter((self.x, self.y))
+    
+    def __getitem__(self, item):
+        return (self.x, self.y)[item]
+
 @dataclass
 class Action:
     """
@@ -37,6 +43,12 @@ class Action:
         # Logic to check if this action needs further breakdown
         # Currently inferred from context in the original code
         return False
+
+    def __iter__(self):
+        return iter((self.description, self.duration))
+    
+    def __getitem__(self, item):
+        return (self.description, self.duration)[item]
 
 @dataclass
 class CurrentAction:

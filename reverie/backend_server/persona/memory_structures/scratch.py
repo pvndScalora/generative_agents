@@ -9,7 +9,7 @@ import json
 import sys
 sys.path.append('../../')
 
-from reverie.backend_server.models import PersonaIdentity, CognitiveParams, CurrentAction, Coordinate
+from reverie.backend_server.models import PersonaIdentity, CognitiveParams, CurrentAction, Coordinate, Action
 from global_methods import check_if_file_exists
 
 class Scratch: 
@@ -111,7 +111,10 @@ class Scratch:
                                                   "%B %d, %Y, %H:%M:%S")
       else: 
         self.curr_time = None
-      self.curr_tile = scratch_load["curr_tile"]
+      if scratch_load["curr_tile"]:
+        self.curr_tile = Coordinate(*scratch_load["curr_tile"])
+      else:
+        self.curr_tile = None
       self.daily_plan_req = scratch_load["daily_plan_req"]
 
       self.identity.name = scratch_load["name"]
@@ -139,8 +142,8 @@ class Scratch:
       self.cognitive_params.thought_count = scratch_load.get("thought_count", 5)
 
       self.daily_req = scratch_load["daily_req"]
-      self.f_daily_schedule = scratch_load["f_daily_schedule"]
-      self.f_daily_schedule_hourly_org = scratch_load["f_daily_schedule_hourly_org"]
+      self.f_daily_schedule = [Action(description=x[0], duration=x[1]) for x in scratch_load["f_daily_schedule"]]
+      self.f_daily_schedule_hourly_org = [Action(description=x[0], duration=x[1]) for x in scratch_load["f_daily_schedule_hourly_org"]]
 
       self.act.address = scratch_load["act_address"]
       if scratch_load["act_start_time"]: 
@@ -170,7 +173,7 @@ class Scratch:
         self.chatting_end_time = None
 
       self.act_path_set = scratch_load["act_path_set"]
-      self.planned_path = scratch_load["planned_path"]
+      self.planned_path = [Coordinate(*p) for p in scratch_load["planned_path"]]
 
   # PROPERTIES FOR BACKWARD COMPATIBILITY
   @property
@@ -364,7 +367,7 @@ class Scratch:
     scratch["retention"] = self.retention
 
     scratch["curr_time"] = self.curr_time.strftime("%B %d, %Y, %H:%M:%S")
-    scratch["curr_tile"] = self.curr_tile
+    scratch["curr_tile"] = self.curr_tile.as_tuple() if self.curr_tile else None
     scratch["daily_plan_req"] = self.daily_plan_req
 
     scratch["name"] = self.name
@@ -394,12 +397,12 @@ class Scratch:
     scratch["thought_count"] = self.thought_count
 
     scratch["daily_req"] = self.daily_req
-    scratch["f_daily_schedule"] = self.f_daily_schedule
-    scratch["f_daily_schedule_hourly_org"] = self.f_daily_schedule_hourly_org
+    scratch["f_daily_schedule"] = [[x.description, x.duration] for x in self.f_daily_schedule]
+    scratch["f_daily_schedule_hourly_org"] = [[x.description, x.duration] for x in self.f_daily_schedule_hourly_org]
 
     scratch["act_address"] = self.act_address
-    scratch["act_start_time"] = (self.act_start_time
-                                     .strftime("%B %d, %Y, %H:%M:%S"))
+    scratch["act_start_time"] = (self.act_start_time.strftime("%B %d, %Y, %H:%M:%S") 
+                                 if self.act_start_time else None)
     scratch["act_duration"] = self.act_duration
     scratch["act_description"] = self.act_description
     scratch["act_pronunciatio"] = self.act_pronunciatio
@@ -419,7 +422,7 @@ class Scratch:
       scratch["chatting_end_time"] = None
 
     scratch["act_path_set"] = self.act_path_set
-    scratch["planned_path"] = self.planned_path
+    scratch["planned_path"] = [p.as_tuple() for p in self.planned_path]
 
     with open(out_json, "w") as outfile:
       json.dump(scratch, outfile, indent=2) 
