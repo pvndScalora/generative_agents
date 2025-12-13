@@ -15,6 +15,7 @@ sys.path.append('../../')
 from persona.prompt_template.run_gpt_prompt import *
 from persona.cognitive_modules.retrieve import *
 from persona.cognitive_modules.converse import *
+from models import Action
 
 ##############################################################################
 # CHAPTER 2: Generate
@@ -133,7 +134,7 @@ def generate_hourly_schedule(persona, wake_up_hour):
   # ['eating breakfast', 60],..
   n_m1_hourly_compressed = []
   for task, duration in _n_m1_hourly_compressed: 
-    n_m1_hourly_compressed += [[task, duration*60]]
+    n_m1_hourly_compressed.append(Action(description=task, duration=duration*60))
 
   return n_m1_hourly_compressed
 
@@ -161,7 +162,8 @@ def generate_task_decomp(persona, task, duration):
 
   """
   logging.debug("GNS FUNCTION: <generate_task_decomp>")
-  return run_gpt_prompt_task_decomp(persona, task, duration)[0]
+  ret = run_gpt_prompt_task_decomp(persona, task, duration)[0]
+  return [Action(description=x[0], duration=x[1]) for x in ret]
 
 
 def generate_action_sector(act_desp, persona, maze): 
@@ -610,7 +612,7 @@ def _determine_action(persona, maze):
 
   if 1440 - x_emergency > 0: 
     print ("x_emergency__AAA", x_emergency)
-  persona.scratch.f_daily_schedule += [["sleeping", 1440 - x_emergency]]
+  persona.scratch.f_daily_schedule += [Action(description="sleeping", duration=1440 - x_emergency)]
   
 
 
