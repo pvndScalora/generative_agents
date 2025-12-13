@@ -12,7 +12,6 @@ import numpy
 import datetime
 import random
 
-from global_methods import *
 from persona.prompt_template.gpt_structure import *
 from utils import *
 

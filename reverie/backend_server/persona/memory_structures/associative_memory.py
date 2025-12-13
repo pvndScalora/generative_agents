@@ -13,9 +13,6 @@ sys.path.append('../../')
 import json
 import datetime
 
-from global_methods import *
-
-
 class ConceptNode: 
   def __init__(self,
                node_id, node_count, type_count, node_type, depth,

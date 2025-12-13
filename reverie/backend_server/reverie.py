@@ -30,10 +30,16 @@ import traceback
 
 from selenium import webdriver
 
-from global_methods import *
+from global_methods import (
+    copyanything, 
+    check_if_file_exists, 
+    read_file_to_list
+)
 from utils import *
 from maze import *
 from persona.persona import *
+from persona.cognitive_modules.converse import load_history_via_whisper
+from logging_config import setup_logging
 
 ##############################################################################
 #                                  REVERIE                                   #
@@ -599,6 +605,7 @@ class ReverieServer:
 
 
 if __name__ == '__main__':
+  setup_logging()
   # rs = ReverieServer("base_the_ville_isabella_maria_klaus", 
   #                    "July1_the_ville_isabella_maria_klaus-step-3-1")
   # rs = ReverieServer("July1_the_ville_isabella_maria_klaus-step-3-20", 

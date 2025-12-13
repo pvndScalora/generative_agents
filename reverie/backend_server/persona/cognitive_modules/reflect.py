@@ -13,7 +13,6 @@ import random
 from numpy import dot
 from numpy.linalg import norm
 
-from global_methods import *
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import *
 from persona.cognitive_modules.retrieve import *

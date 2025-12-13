@@ -10,8 +10,6 @@ import datetime
 import random
 sys.path.append('../')
 
-from global_methods import *
-
 from persona.memory_structures.spatial_memory import *
 from persona.memory_structures.associative_memory import *
 from persona.memory_structures.scratch import *

@@ -12,7 +12,7 @@ import pickle
 import time
 import math
 
-from global_methods import *
+from global_methods import read_file_to_list
 from utils import *
 
 class Maze: 

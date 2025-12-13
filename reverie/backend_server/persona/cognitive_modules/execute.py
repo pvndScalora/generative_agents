@@ -8,7 +8,6 @@ import sys
 import random
 sys.path.append('../../')
 
-from global_methods import *
 from path_finder import *
 from utils import *
 

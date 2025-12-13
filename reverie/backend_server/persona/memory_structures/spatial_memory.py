@@ -10,7 +10,7 @@ import sys
 sys.path.append('../../')
 
 from utils import *
-from global_methods import *
+from global_methods import check_if_file_exists
 
 class MemoryTree: 
   def __init__(self, f_saved): 

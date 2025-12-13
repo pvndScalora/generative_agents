@@ -9,10 +9,11 @@ import re
 import datetime
 import sys
 import ast
+import random
+import string
 
 sys.path.append('../../')
 
-from global_methods import *
 from persona.prompt_template.gpt_structure import *
 from persona.prompt_template.print_prompt import *
 
