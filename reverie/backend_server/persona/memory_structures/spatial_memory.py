@@ -9,7 +9,7 @@ import json
 import sys
 sys.path.append('../../')
 
-from utils import *
+from config import *
 from global_methods import check_if_file_exists
 
 class MemoryTree: 

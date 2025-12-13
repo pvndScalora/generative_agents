@@ -9,9 +9,9 @@ import random
 import openai
 import time 
 
-from utils import *
+from config import *
 
-openai.api_key = openai_api_key
+openai.api_key = OPENAI_API_KEY
 
 def temp_sleep(seconds=0.1):
   time.sleep(seconds)

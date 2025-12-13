@@ -78,7 +78,7 @@ def run_gpt_prompt_wake_up_hour(persona, test_input=None, verbose=False):
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
   
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
     
@@ -152,7 +152,7 @@ def run_gpt_prompt_daily_plan(persona,
   output = ([f"wake up and complete the morning routine at {wake_up_hour}:00 am"]
               + output)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
     
@@ -282,7 +282,7 @@ def run_gpt_prompt_generate_hourly_schedule(persona,
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
   
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
     
@@ -483,7 +483,7 @@ def run_gpt_prompt_task_decomp(persona,
   output = ret
 
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
     
@@ -621,7 +621,7 @@ def run_gpt_prompt_action_sector(action_description,
 
   print ("DEBUG", random.choice(x), "------", output)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
 
@@ -716,7 +716,7 @@ def run_gpt_prompt_action_arena(action_description,
   # if output not in x: 
   #   output = random.choice(x)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
 
@@ -774,7 +774,7 @@ def run_gpt_prompt_action_game_object(action_description,
   if output not in x: 
     output = random.choice(x)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -857,7 +857,7 @@ def run_gpt_prompt_pronunciatio(action_description, persona, verbose=False):
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -945,7 +945,7 @@ def run_gpt_prompt_event_triple(action_description, persona, verbose=False):
                                    __func_validate, __func_clean_up)
   output = (persona.name, output[0], output[1])
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1029,7 +1029,7 @@ def run_gpt_prompt_act_obj_desc(act_game_object, act_desp, persona, verbose=Fals
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -1078,7 +1078,7 @@ def run_gpt_prompt_act_obj_event_triple(act_game_object, act_obj_desc, persona, 
                                    __func_validate, __func_clean_up)
   output = (act_game_object, output[0], output[1])
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1231,7 +1231,7 @@ def run_gpt_prompt_new_decomp_schedule(persona,
 
 
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1333,7 +1333,7 @@ def run_gpt_prompt_decide_to_talk(persona, target_persona, retrieved,test_input=
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1431,7 +1431,7 @@ def run_gpt_prompt_decide_to_react(persona, target_persona, retrieved,test_input
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1574,7 +1574,7 @@ def run_gpt_prompt_create_conversation(persona, target_persona, curr_loc,
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1654,7 +1654,7 @@ def run_gpt_prompt_summarize_conversation(persona, conversation, test_input=None
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -1709,7 +1709,7 @@ def run_gpt_prompt_extract_keywords(persona, description, test_input=None, verbo
                                    __func_validate, __func_clean_up)
 
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1753,7 +1753,7 @@ def run_gpt_prompt_keyword_to_thoughts(persona, keyword, concept_summary, test_i
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1811,7 +1811,7 @@ def run_gpt_prompt_convo_to_thoughts(persona,
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -1909,7 +1909,7 @@ def run_gpt_prompt_event_poignancy(persona, event_description, test_input=None, 
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -1979,7 +1979,7 @@ def run_gpt_prompt_thought_poignancy(persona, event_description, test_input=None
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -2052,7 +2052,7 @@ def run_gpt_prompt_chat_poignancy(persona, event_description, test_input=None, v
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -2130,7 +2130,7 @@ def run_gpt_prompt_focal_pt(persona, statements, n, test_input=None, verbose=Fal
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -2181,7 +2181,7 @@ def run_gpt_prompt_insight_and_guidance(persona, statements, n, test_input=None,
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -2254,7 +2254,7 @@ def run_gpt_prompt_agent_chat_summarize_ideas(persona, target_persona, statement
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -2321,7 +2321,7 @@ def run_gpt_prompt_agent_chat_summarize_relationship(persona, target_persona, st
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -2454,7 +2454,7 @@ def run_gpt_prompt_agent_chat(maze, persona, target_persona,
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -2530,7 +2530,7 @@ def run_gpt_prompt_summarize_ideas(persona, statements, question, test_input=Non
   # output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
   #                                  __func_validate, __func_clean_up)
 
-  # if debug or verbose: 
+  # if DEBUG or verbose: 
   #   print_run_prompts(prompt_template, persona, gpt_param, 
   #                     prompt_input, prompt, output)
   
@@ -2605,7 +2605,7 @@ def run_gpt_prompt_generate_next_convo_line(persona, interlocutor_desc, prev_con
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -2645,7 +2645,7 @@ def run_gpt_prompt_generate_whisper_inner_thought(persona, whisper, test_input=N
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -2682,7 +2682,7 @@ def run_gpt_prompt_planning_thought_on_convo(persona, all_utt, test_input=None, 
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -2748,7 +2748,7 @@ def run_gpt_prompt_memo_on_convo(persona, all_utt, test_input=None, verbose=Fals
   output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
                                    __func_validate, __func_clean_up)
 
-  if debug or verbose: 
+  if DEBUG or verbose: 
     print_run_prompts(prompt_template, persona, gpt_param, 
                       prompt_input, prompt, output)
   
@@ -2878,12 +2878,12 @@ def run_gpt_generate_iterative_chat_utt(maze, init_persona, target_persona, retr
   def __chat_func_validate(gpt_response, prompt=""): 
     print ("ugh...")
     try: 
-      # print ("debug 1")
+      # print ("DEBUG 1")
       # print (gpt_response)
-      # print ("debug 2")
+      # print ("DEBUG 2")
 
       print (extract_first_json_dict(gpt_response))
-      # print ("debug 3")
+      # print ("DEBUG 3")
 
       return True
     except:
