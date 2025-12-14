@@ -50,12 +50,12 @@ class TestPersona(unittest.TestCase):
 
     def test_initialization(self):
         """
-        Test that the Persona initializes correctly:
+        Test that the Persona initializes correctly via create_from_folder:
         1. Instantiates the JsonMemoryRepository.
         2. Loads spatial, associative, and scratch memory from the repository.
-        3. Initializes all cognitive modules (Perceiver, Retriever, etc.).
+        3. Initializes all cognitive modules (Perceiver, Retriever, etc.) with scratch.
         """
-        persona = Persona("Klaus")
+        persona = Persona.create_from_folder("Klaus")
         
         # Verify repository usage
         self.mock_repo_cls.assert_called_once()
@@ -63,13 +63,15 @@ class TestPersona(unittest.TestCase):
         self.mock_repo.load_associative_memory.assert_called_once()
         self.mock_repo.load_scratch.assert_called_once()
         
-        # Verify modules are initialized with the persona instance
-        self.mock_perceiver_cls.assert_called_with(persona)
-        self.mock_retriever_cls.assert_called_with(persona)
-        self.mock_planner_cls.assert_called_with(persona)
-        self.mock_executor_cls.assert_called_with(persona)
-        self.mock_reflector_cls.assert_called_with(persona)
-        self.mock_converser_cls.assert_called_with(persona)
+        scratch = self.mock_repo.load_scratch.return_value
+
+        # Verify modules are initialized with the scratch instance
+        self.mock_perceiver_cls.assert_called_with(scratch)
+        self.mock_retriever_cls.assert_called_with(scratch)
+        self.mock_planner_cls.assert_called_with(scratch)
+        self.mock_executor_cls.assert_called_with(scratch)
+        self.mock_reflector_cls.assert_called_with(scratch)
+        self.mock_converser_cls.assert_called_with(scratch)
 
     def test_save(self):
         """
@@ -77,7 +79,7 @@ class TestPersona(unittest.TestCase):
         It should call save_spatial_memory, save_associative_memory, and save_scratch
         with the correct memory objects and folder path.
         """
-        persona = Persona("Klaus")
+        persona = Persona.create_from_folder("Klaus")
         save_folder = "test_folder"
         persona.save(save_folder)
         
@@ -92,11 +94,20 @@ class TestPersona(unittest.TestCase):
         - "New day": If the date of the new curr_time differs from scratch.curr_time.
         - False: If the date is the same.
         """
-        persona = Persona("Klaus")
+        # Construct Persona manually with mocks
+        scratch = MagicMock()
+        repo = MagicMock()
+        s_mem = MagicMock()
+        a_mem = MagicMock()
+        perceiver = MagicMock()
+        retriever = MagicMock()
+        planner = MagicMock()
+        executor = MagicMock()
+        reflector = MagicMock()
+        converser = MagicMock()
         
-        # Mock scratch to control curr_time
-        mock_scratch = MagicMock()
-        persona.scratch = mock_scratch
+        persona = Persona("Klaus", repo, scratch, s_mem, a_mem, 
+                          perceiver, retriever, planner, executor, reflector, converser)
         
         # Setup common args
         curr_tile = (10, 10)
@@ -104,7 +115,7 @@ class TestPersona(unittest.TestCase):
         personas = {}
         
         # Case 1: First day (curr_time is None)
-        mock_scratch.curr_time = None
+        scratch.curr_time = None
         curr_time = datetime.datetime(2023, 1, 1, 10, 0)
         
         persona.move(maze, personas, curr_tile, curr_time)
@@ -116,7 +127,7 @@ class TestPersona(unittest.TestCase):
         self.assertEqual(args[2], "First day")
         
         # Case 2: Same day
-        mock_scratch.curr_time = datetime.datetime(2023, 1, 1, 9, 0)
+        scratch.curr_time = datetime.datetime(2023, 1, 1, 9, 0)
         curr_time = datetime.datetime(2023, 1, 1, 10, 0)
         
         persona.move(maze, personas, curr_tile, curr_time)
@@ -124,7 +135,7 @@ class TestPersona(unittest.TestCase):
         self.assertEqual(args[2], False)
 
         # Case 3: New day
-        mock_scratch.curr_time = datetime.datetime(2023, 1, 1, 23, 0)
+        scratch.curr_time = datetime.datetime(2023, 1, 1, 23, 0)
         curr_time = datetime.datetime(2023, 1, 2, 8, 0)
         
         persona.move(maze, personas, curr_tile, curr_time)
@@ -138,7 +149,20 @@ class TestPersona(unittest.TestCase):
         2. Calls perceive() -> retrieve() -> plan() -> reflect() -> execute().
         3. Verifies data is passed correctly between these steps.
         """
-        persona = Persona("Klaus")
+        # Construct Persona manually with mocks
+        scratch = MagicMock()
+        repo = MagicMock()
+        s_mem = MagicMock()
+        a_mem = MagicMock()
+        perceiver = MagicMock()
+        retriever = MagicMock()
+        planner = MagicMock()
+        executor = MagicMock()
+        reflector = MagicMock()
+        converser = MagicMock()
+        
+        persona = Persona("Klaus", repo, scratch, s_mem, a_mem, 
+                          perceiver, retriever, planner, executor, reflector, converser)
         
         # Setup mocks
         maze = MagicMock()

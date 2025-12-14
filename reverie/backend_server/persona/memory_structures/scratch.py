@@ -11,168 +11,186 @@ sys.path.append('../../')
 
 from reverie.backend_server.models import PersonaIdentity, CognitiveParams, CurrentAction, Coordinate, Action
 from global_methods import check_if_file_exists
+from .state import PersonaState, IdentityProfile, WorldContext, ExecutiveState, ActionState, SocialContext
 
 class Scratch: 
   def __init__(self, scratch_load): 
     # Initialize Data Models
-    self.identity = PersonaIdentity(
+    identity = PersonaIdentity(
         name="Placeholder Name", 
         age=0,
         innate="", learned="", currently="", lifestyle="", living_area=""
     )
-    self.cognitive_params = CognitiveParams()
+    cognitive_params = CognitiveParams()
 
-    # WORLD INFORMATION
-    # Perceived world time. 
-    self.curr_time = None
-    # Current x,y tile coordinate of the persona. 
-    self.curr_tile = None
-    # Perceived world daily requirement. 
-    self.daily_plan_req = None
-    
-    # PERSONA PLANNING 
-    # <daily_req> is a list of various goals the persona is aiming to achieve
-    # today. 
-    # e.g., ['Work on her paintings for her upcoming show', 
-    #        'Take a break to watch some TV', 
-    #        'Make lunch for herself', 
-    #        'Work on her paintings some more', 
-    #        'Go to bed early']
-    # They have to be renewed at the end of the day, which is why we are
-    # keeping track of when they were first generated. 
-    self.daily_req = []
-    # <f_daily_schedule> denotes a form of long term planning. This lays out 
-    # the persona's daily plan. 
-    # Note that we take the long term planning and short term decomposition 
-    # appoach, which is to say that we first layout hourly schedules and 
-    # gradually decompose as we go. 
-    # Three things to note in the example below: 
-    # 1) See how "sleeping" was not decomposed -- some of the common events 
-    #    really, just mainly sleeping, are hard coded to be not decomposable.
-    # 2) Some of the elements are starting to be decomposed... More of the 
-    #    things will be decomposed as the day goes on (when they are 
-    #    decomposed, they leave behind the original hourly action description
-    #    in tact).
-    # 3) The latter elements are not decomposed. When an event occurs, the
-    #    non-decomposed elements go out the window.  
-    # e.g., [['sleeping', 360], 
-    #         ['wakes up and ... (wakes up and stretches ...)', 5], 
-    #         ['wakes up and starts her morning routine (out of bed )', 10],
-    #         ...
-    #         ['having lunch', 60], 
-    #         ['working on her painting', 180], ...]
-    self.f_daily_schedule = []
-    # <f_daily_schedule_hourly_org> is a replica of f_daily_schedule
-    # initially, but retains the original non-decomposed version of the hourly
-    # schedule. 
-    # e.g., [['sleeping', 360], 
-    #        ['wakes up and starts her morning routine', 120],
-    #        ['working on her painting', 240], ... ['going to bed', 60]]
-    self.f_daily_schedule_hourly_org = []
-    
-    # CURR ACTION 
-    self.act = CurrentAction()
-    self.act.event = (self.identity.name, None, None)
-    self.act.obj_event = (self.identity.name, None, None)
-
-    # <chatting_with> is the string name of the persona that the current 
-    # persona is chatting with. None if it does not exist. 
-    self.chatting_with = None
-    # <chat> is a list of list that saves a conversation between two personas.
-    # It comes in the form of: [["Dolores Murphy", "Hi"], 
-    #                           ["Maeve Jenson", "Hi"] ...]
-    self.chat = None
-    # <chatting_with_buffer>  
-    # e.g., ["Dolores Murphy"] = self.vision_r
-    self.chatting_with_buffer = dict()
-    self.chatting_end_time = None
-
-    # <path_set> is True if we've already calculated the path the persona will
-    # take to execute this action. That path is stored in the persona's 
-    # scratch.planned_path.
-    self.act_path_set = False
-    # <planned_path> is a list of x y coordinate tuples (tiles) that describe
-    # the path the persona is to take to execute the <curr_action>. 
-    # The list does not include the persona's current tile, and includes the 
-    # destination tile. 
-    # e.g., [(50, 10), (49, 10), (48, 10), ...]
-    self.planned_path = []
+    self.state = PersonaState(
+        identity_profile=IdentityProfile(identity, cognitive_params),
+        world_context=WorldContext(),
+        executive_state=ExecutiveState(),
+        action_state=ActionState(),
+        social_context=SocialContext()
+    )
 
     if scratch_load: 
-      self.cognitive_params.vision_r = scratch_load["vision_r"]
-      self.cognitive_params.att_bandwidth = scratch_load["att_bandwidth"]
-      self.cognitive_params.retention = scratch_load["retention"]
+      self.state.identity_profile.cognitive_params.vision_r = scratch_load["vision_r"]
+      self.state.identity_profile.cognitive_params.att_bandwidth = scratch_load["att_bandwidth"]
+      self.state.identity_profile.cognitive_params.retention = scratch_load["retention"]
 
       if scratch_load["curr_time"]: 
-        self.curr_time = datetime.datetime.strptime(scratch_load["curr_time"],
+        self.state.world_context.curr_time = datetime.datetime.strptime(scratch_load["curr_time"],
                                                   "%B %d, %Y, %H:%M:%S")
       else: 
-        self.curr_time = None
+        self.state.world_context.curr_time = None
       if scratch_load["curr_tile"]:
-        self.curr_tile = Coordinate(*scratch_load["curr_tile"])
+        self.state.world_context.curr_tile = Coordinate(*scratch_load["curr_tile"])
       else:
-        self.curr_tile = None
-      self.daily_plan_req = scratch_load["daily_plan_req"]
+        self.state.world_context.curr_tile = None
+      self.state.executive_state.daily_plan_req = scratch_load["daily_plan_req"]
 
-      self.identity.name = scratch_load["name"]
-      self.identity.age = scratch_load["age"]
-      self.identity.innate = scratch_load["innate"]
-      self.identity.learned = scratch_load["learned"]
-      self.identity.currently = scratch_load["currently"]
-      self.identity.lifestyle = scratch_load["lifestyle"]
-      self.identity.living_area = scratch_load["living_area"]
+      self.state.identity_profile.identity.name = scratch_load["name"]
+      self.state.identity_profile.identity.age = scratch_load["age"]
+      self.state.identity_profile.identity.innate = scratch_load["innate"]
+      self.state.identity_profile.identity.learned = scratch_load["learned"]
+      self.state.identity_profile.identity.currently = scratch_load["currently"]
+      self.state.identity_profile.identity.lifestyle = scratch_load["lifestyle"]
+      self.state.identity_profile.identity.living_area = scratch_load["living_area"]
 
-      self.cognitive_params.concept_forget = scratch_load["concept_forget"]
-      self.cognitive_params.daily_reflection_time = scratch_load["daily_reflection_time"]
-      self.cognitive_params.daily_reflection_size = scratch_load["daily_reflection_size"]
-      self.cognitive_params.overlap_reflect_th = scratch_load["overlap_reflect_th"]
-      self.cognitive_params.kw_strg_event_reflect_th = scratch_load["kw_strg_event_reflect_th"]
-      self.cognitive_params.kw_strg_thought_reflect_th = scratch_load["kw_strg_thought_reflect_th"]
+      self.state.identity_profile.cognitive_params.concept_forget = scratch_load["concept_forget"]
+      self.state.identity_profile.cognitive_params.daily_reflection_time = scratch_load["daily_reflection_time"]
+      self.state.identity_profile.cognitive_params.daily_reflection_size = scratch_load["daily_reflection_size"]
+      self.state.identity_profile.cognitive_params.overlap_reflect_th = scratch_load["overlap_reflect_th"]
+      self.state.identity_profile.cognitive_params.kw_strg_event_reflect_th = scratch_load["kw_strg_event_reflect_th"]
+      self.state.identity_profile.cognitive_params.kw_strg_thought_reflect_th = scratch_load["kw_strg_thought_reflect_th"]
 
-      self.cognitive_params.recency_weight = scratch_load["recency_w"]
-      self.cognitive_params.relevance_weight = scratch_load["relevance_w"]
-      self.cognitive_params.importance_weight = scratch_load["importance_w"]
-      self.cognitive_params.recency_decay = scratch_load["recency_decay"]
-      self.cognitive_params.importance_trigger_max = scratch_load["importance_trigger_max"]
-      self.cognitive_params.importance_trigger_curr = scratch_load["importance_trigger_curr"]
-      self.cognitive_params.importance_ele_n = scratch_load["importance_ele_n"]
-      self.cognitive_params.thought_count = scratch_load.get("thought_count", 5)
+      self.state.identity_profile.cognitive_params.recency_weight = scratch_load["recency_w"]
+      self.state.identity_profile.cognitive_params.relevance_weight = scratch_load["relevance_w"]
+      self.state.identity_profile.cognitive_params.importance_weight = scratch_load["importance_w"]
+      self.state.identity_profile.cognitive_params.recency_decay = scratch_load["recency_decay"]
+      self.state.identity_profile.cognitive_params.importance_trigger_max = scratch_load["importance_trigger_max"]
+      self.state.identity_profile.cognitive_params.importance_trigger_curr = scratch_load["importance_trigger_curr"]
+      self.state.identity_profile.cognitive_params.importance_ele_n = scratch_load["importance_ele_n"]
+      self.state.identity_profile.cognitive_params.thought_count = scratch_load.get("thought_count", 5)
 
-      self.daily_req = scratch_load["daily_req"]
-      self.f_daily_schedule = [Action(description=x[0], duration=x[1]) for x in scratch_load["f_daily_schedule"]]
-      self.f_daily_schedule_hourly_org = [Action(description=x[0], duration=x[1]) for x in scratch_load["f_daily_schedule_hourly_org"]]
+      self.state.executive_state.daily_req = scratch_load["daily_req"]
+      self.state.executive_state.f_daily_schedule = [Action(description=x[0], duration=x[1]) for x in scratch_load["f_daily_schedule"]]
+      self.state.executive_state.f_daily_schedule_hourly_org = [Action(description=x[0], duration=x[1]) for x in scratch_load["f_daily_schedule_hourly_org"]]
 
-      self.act.address = scratch_load["act_address"]
+      self.state.action_state.current_action.address = scratch_load["act_address"]
       if scratch_load["act_start_time"]: 
-        self.act.start_time = datetime.datetime.strptime(
+        self.state.action_state.current_action.start_time = datetime.datetime.strptime(
                                               scratch_load["act_start_time"],
                                               "%B %d, %Y, %H:%M:%S")
       else: 
-        self.act.start_time = None 
+        self.state.action_state.current_action.start_time = None 
       
-      self.act.duration = scratch_load["act_duration"]
-      self.act.description = scratch_load["act_description"]
-      self.act.pronunciatio = scratch_load["act_pronunciatio"]
-      self.act.event = tuple(scratch_load["act_event"])
+      self.state.action_state.current_action.duration = scratch_load["act_duration"]
+      self.state.action_state.current_action.description = scratch_load["act_description"]
+      self.state.action_state.current_action.pronunciatio = scratch_load["act_pronunciatio"]
+      self.state.action_state.current_action.event = tuple(scratch_load["act_event"])
 
-      self.act.obj_description = scratch_load["act_obj_description"]
-      self.act.obj_pronunciatio = scratch_load["act_obj_pronunciatio"]
-      self.act.obj_event = tuple(scratch_load["act_obj_event"])
+      self.state.action_state.current_action.obj_description = scratch_load["act_obj_description"]
+      self.state.action_state.current_action.obj_pronunciatio = scratch_load["act_obj_pronunciatio"]
+      self.state.action_state.current_action.obj_event = tuple(scratch_load["act_obj_event"])
 
-      self.chatting_with = scratch_load["chatting_with"]
-      self.chat = scratch_load["chat"]
-      self.chatting_with_buffer = scratch_load["chatting_with_buffer"]
+      self.state.social_context.chatting_with = scratch_load["chatting_with"]
+      self.state.social_context.chat = scratch_load["chat"]
+      self.state.social_context.chatting_with_buffer = scratch_load["chatting_with_buffer"]
       if scratch_load["chatting_end_time"]: 
-        self.chatting_end_time = datetime.datetime.strptime(
+        self.state.social_context.chatting_end_time = datetime.datetime.strptime(
                                             scratch_load["chatting_end_time"],
                                             "%B %d, %Y, %H:%M:%S")
       else:
-        self.chatting_end_time = None
+        self.state.social_context.chatting_end_time = None
 
-      self.act_path_set = scratch_load["act_path_set"]
-      self.planned_path = [Coordinate(*p) for p in scratch_load["planned_path"]]
+      self.state.action_state.act_path_set = scratch_load["act_path_set"]
+      self.state.action_state.planned_path = [Coordinate(*p) for p in scratch_load["planned_path"]]
+
+  @property
+  def scratch(self):
+      """
+      Helper property to allow this object to be passed where 'persona.scratch' is expected.
+      This aids in refactoring by allowing Scratch to mimic the Persona structure for prompts.
+      """
+      return self
 
   # PROPERTIES FOR BACKWARD COMPATIBILITY
+  @property
+  def identity(self): return self.state.identity_profile.identity
+  
+  @property
+  def cognitive_params(self): return self.state.identity_profile.cognitive_params
+
+  @property
+  def curr_time(self): return self.state.world_context.curr_time
+  @curr_time.setter
+  def curr_time(self, value): self.state.world_context.curr_time = value
+
+  @property
+  def curr_tile(self): return self.state.world_context.curr_tile
+  @curr_tile.setter
+  def curr_tile(self, value): self.state.world_context.curr_tile = value
+
+  @property
+  def daily_plan_req(self): return self.state.executive_state.daily_plan_req
+  @daily_plan_req.setter
+  def daily_plan_req(self, value): self.state.executive_state.daily_plan_req = value
+
+  @property
+  def daily_req(self): return self.state.executive_state.daily_req
+  @daily_req.setter
+  def daily_req(self, value): self.state.executive_state.daily_req = value
+
+  @property
+  def f_daily_schedule(self): return self.state.executive_state.f_daily_schedule
+  @f_daily_schedule.setter
+  def f_daily_schedule(self, value): self.state.executive_state.f_daily_schedule = value
+
+  @property
+  def f_daily_schedule_hourly_org(self): return self.state.executive_state.f_daily_schedule_hourly_org
+  @f_daily_schedule_hourly_org.setter
+  def f_daily_schedule_hourly_org(self, value): self.state.executive_state.f_daily_schedule_hourly_org = value
+
+  @property
+  def act(self): return self.state.action_state.current_action
+  @act.setter
+  def act(self, value): self.state.action_state.current_action = value
+
+  @property
+  def chatting_with(self): return self.state.social_context.chatting_with
+  @chatting_with.setter
+  def chatting_with(self, value): self.state.social_context.chatting_with = value
+
+  @property
+  def chat(self): return self.state.social_context.chat
+  @chat.setter
+  def chat(self, value): self.state.social_context.chat = value
+
+  @property
+  def chatting_with_buffer(self): return self.state.social_context.chatting_with_buffer
+  @chatting_with_buffer.setter
+  def chatting_with_buffer(self, value): self.state.social_context.chatting_with_buffer = value
+
+  @property
+  def chatting_end_time(self): return self.state.social_context.chatting_end_time
+  @chatting_end_time.setter
+  def chatting_end_time(self, value): self.state.social_context.chatting_end_time = value
+
+  @property
+  def act_path_set(self): return self.state.action_state.act_path_set
+  @act_path_set.setter
+  def act_path_set(self, value): self.state.action_state.act_path_set = value
+
+  @property
+  def planned_path(self): return self.state.action_state.planned_path
+  @planned_path.setter
+  def planned_path(self, value): self.state.action_state.planned_path = value
+
+  @property
+  def a_mem(self): return self.state.memory_system.associative_memory
+
+  @property
+  def s_mem(self): return self.state.memory_system.spatial_memory
+
   @property
   def vision_r(self): return self.cognitive_params.vision_r
   @vision_r.setter

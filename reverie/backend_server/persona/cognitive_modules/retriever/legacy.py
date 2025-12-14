@@ -7,7 +7,7 @@ from reverie.backend_server.persona.prompt_template.gpt_structure import get_emb
 from .base import AbstractRetriever
 
 if TYPE_CHECKING:
-    from persona.persona import Persona
+    from persona.memory_structures.scratch import Scratch
 
 class LegacyRetriever(AbstractRetriever):
     """
@@ -15,8 +15,8 @@ class LegacyRetriever(AbstractRetriever):
     Uses a weighted score of Recency, Importance, and Relevance.
     """
 
-    def __init__(self, persona: "Persona"):
-        self.persona = persona
+    def __init__(self, scratch: "Scratch"):
+        self.scratch = scratch
 
     def retrieve(self, perceived: List[Memory]) -> Dict[str, Dict[str, Any]]:
         """
@@ -50,11 +50,11 @@ class LegacyRetriever(AbstractRetriever):
             # For now, let's implement the `retrieve` method as it was, but we might need to move `new_retrieve` logic 
             # into this class as well, and expose it.
             
-            relevant_events = self.persona.a_mem.retrieve_relevant_events(
+            relevant_events = self.scratch.a_mem.retrieve_relevant_events(
                                 event.subject, event.predicate, event.object)
             retrieved[event.description]["events"] = list(relevant_events)
 
-            relevant_thoughts = self.persona.a_mem.retrieve_relevant_thoughts(
+            relevant_thoughts = self.scratch.a_mem.retrieve_relevant_thoughts(
                                 event.subject, event.predicate, event.object)
             retrieved[event.description]["thoughts"] = list(relevant_thoughts)
             
@@ -69,7 +69,7 @@ class LegacyRetriever(AbstractRetriever):
         for focal_pt in focal_points: 
             # Getting all nodes from the agent's memory (both thoughts and events)
             nodes = [[i.last_accessed, i]
-                    for i in self.persona.a_mem.seq_event + self.persona.a_mem.seq_thought
+                    for i in self.scratch.a_mem.seq_event + self.scratch.a_mem.seq_thought
                     if "idle" not in i.embedding_key]
             nodes = sorted(nodes, key=lambda x: x[0])
             nodes = [i for created, i in nodes]
@@ -86,24 +86,24 @@ class LegacyRetriever(AbstractRetriever):
             gw = [0.5, 3, 2]
             master_out = dict()
             for key in recency_out.keys(): 
-                master_out[key] = (self.persona.scratch.recency_w * recency_out[key] * gw[0] 
-                                + self.persona.scratch.relevance_w * relevance_out[key] * gw[1] 
-                                + self.persona.scratch.importance_w * importance_out[key] * gw[2])
+                master_out[key] = (self.scratch.recency_w * recency_out[key] * gw[0] 
+                                + self.scratch.relevance_w * relevance_out[key] * gw[1] 
+                                + self.scratch.importance_w * importance_out[key] * gw[2])
 
             # Extracting the highest x values.
             master_out = self._top_highest_x_values(master_out, n_count)
-            master_nodes = [self.persona.a_mem.id_to_node[key] 
+            master_nodes = [self.scratch.a_mem.id_to_node[key] 
                             for key in list(master_out.keys())]
 
             for n in master_nodes: 
-                n.last_accessed = self.persona.scratch.curr_time
+                n.last_accessed = self.scratch.curr_time
             
             retrieved[focal_pt] = master_nodes
 
         return retrieved
 
     def _extract_recency(self, nodes: List[Memory]) -> Dict[str, float]:
-        recency_vals = [self.persona.scratch.recency_decay ** i 
+        recency_vals = [self.scratch.recency_decay ** i 
                         for i in range(1, len(nodes) + 1)]
         
         recency_out = dict()
@@ -124,7 +124,7 @@ class LegacyRetriever(AbstractRetriever):
 
         relevance_out = dict()
         for count, node in enumerate(nodes): 
-            node_embedding = self.persona.a_mem.embeddings[node.embedding_key]
+            node_embedding = self.scratch.a_mem.embeddings[node.embedding_key]
             relevance_out[node.id] = self._cos_sim(node_embedding, focal_embedding)
 
         return relevance_out

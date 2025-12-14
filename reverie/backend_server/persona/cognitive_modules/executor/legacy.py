@@ -7,11 +7,12 @@ from reverie.backend_server.models import PlanExecution
 
 if TYPE_CHECKING:
     from persona.persona import Persona
+    from persona.memory_structures.scratch import Scratch
     from reverie.backend_server.maze import Maze
 
 class LegacyExecutor(AbstractExecutor):
-    def __init__(self, persona: "Persona"):
-        self.persona = persona
+    def __init__(self, scratch: "Scratch"):
+        self.scratch = scratch
 
     def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str) -> PlanExecution: 
         """
@@ -19,12 +20,12 @@ class LegacyExecutor(AbstractExecutor):
         outputs the tile coordinate path and the next coordinate for the 
         persona). 
         """
-        if "<random>" in plan and self.persona.scratch.planned_path == []: 
-            self.persona.scratch.act_path_set = False
+        if "<random>" in plan and self.scratch.planned_path == []: 
+            self.scratch.act_path_set = False
 
         # <act_path_set> is set to True if the path is set for the current action. 
         # It is False otherwise, and means we need to construct a new path. 
-        if not self.persona.scratch.act_path_set: 
+        if not self.scratch.act_path_set: 
             # <target_tiles> is a list of tile coordinates where the persona may go 
             # to execute the current action. The goal is to pick one of them.
             target_tiles = None
@@ -37,18 +38,18 @@ class LegacyExecutor(AbstractExecutor):
                 target_p_tile = (personas[plan.split("<persona>")[-1].strip()]
                                 .scratch.curr_tile)
                 potential_path = path_finder(maze.collision_maze, 
-                                            self.persona.scratch.curr_tile, 
+                                            self.scratch.curr_tile, 
                                             target_p_tile, 
                                             COLLISION_BLOCK_ID)
                 if len(potential_path) <= 2: 
                     target_tiles = [potential_path[0]]
                 else: 
                     potential_1 = path_finder(maze.collision_maze, 
-                                            self.persona.scratch.curr_tile, 
+                                            self.scratch.curr_tile, 
                                             potential_path[int(len(potential_path)/2)], 
                                             COLLISION_BLOCK_ID)
                     potential_2 = path_finder(maze.collision_maze, 
-                                            self.persona.scratch.curr_tile, 
+                                            self.scratch.curr_tile, 
                                             potential_path[int(len(potential_path)/2)+1], 
                                             COLLISION_BLOCK_ID)
                     if len(potential_1) <= len(potential_2): 
@@ -107,7 +108,7 @@ class LegacyExecutor(AbstractExecutor):
 
             # Now that we've identified the target tile, we find the shortest path to
             # one of the target tiles. 
-            curr_tile = self.persona.scratch.curr_tile
+            curr_tile = self.scratch.curr_tile
             collision_maze = maze.collision_maze
             closest_target_tile = None
             path = None
@@ -129,22 +130,22 @@ class LegacyExecutor(AbstractExecutor):
 
             # Actually setting the <planned_path> and <act_path_set>. We cut the 
             # first element in the planned_path because it includes the curr_tile. 
-            self.persona.scratch.planned_path = path[1:]
-            self.persona.scratch.act_path_set = True
+            self.scratch.planned_path = path[1:]
+            self.scratch.act_path_set = True
         
         # Setting up the next immediate step. We stay at our curr_tile if there is
         # no <planned_path> left, but otherwise, we go to the next tile in the path.
-        ret = self.persona.scratch.curr_tile
-        if self.persona.scratch.planned_path: 
-            ret = self.persona.scratch.planned_path[0]
-            self.persona.scratch.planned_path = self.persona.scratch.planned_path[1:]
+        ret = self.scratch.curr_tile
+        if self.scratch.planned_path: 
+            ret = self.scratch.planned_path[0]
+            self.scratch.planned_path = self.scratch.planned_path[1:]
 
-        description = f"{self.persona.scratch.act_description}"
-        description += f" @ {self.persona.scratch.act_address}"
+        description = f"{self.scratch.act_description}"
+        description += f" @ {self.scratch.act_address}"
 
         execution = PlanExecution(
             next_tile=ret,
-            pronunciatio=self.persona.scratch.act_pronunciatio,
+            pronunciatio=self.scratch.act_pronunciatio,
             description=description
         )
         return execution

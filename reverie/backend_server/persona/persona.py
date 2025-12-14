@@ -39,28 +39,61 @@ from persona.cognitive_modules.executor import LegacyExecutor
 from persona.cognitive_modules.converser import LegacyConverser
 
 class Persona: 
-  def __init__(self, name: str, folder_mem_saved: str = "False"):
+  def __init__(self, 
+               name: str, 
+               repository: MemoryRepository,
+               scratch: Scratch,
+               spatial_memory: MemoryTree,
+               associative_memory: AssociativeMemory,
+               perceiver: "AbstractPerceiver",
+               retriever: "AbstractRetriever",
+               planner: "AbstractPlanner",
+               executor: "AbstractExecutor",
+               reflector: "AbstractReflector",
+               converser: "AbstractConverser"):
     # PERSONA BASE STATE 
     # <name> is the full name of the persona. This is a unique identifier for
     # the persona within Reverie. 
     self.name: str = name
 
     # PERSONA MEMORY 
-    # Initialize the repository
-    self.repository: MemoryRepository = JsonMemoryRepository(folder_mem_saved)
-
-    # Load memories using the repository
-    self.s_mem: MemoryTree = self.repository.load_spatial_memory()
-    self.a_mem: AssociativeMemory = self.repository.load_associative_memory()
-    self.scratch: Scratch = self.repository.load_scratch()
+    self.repository: MemoryRepository = repository
+    self.s_mem: MemoryTree = spatial_memory
+    self.a_mem: AssociativeMemory = associative_memory
+    self.scratch: Scratch = scratch
 
     # COGNITIVE MODULES
-    self.perceiver: "AbstractPerceiver" = LegacyPerceiver(self)
-    self.retriever: "AbstractRetriever" = LegacyRetriever(self)
-    self.planner: "AbstractPlanner" = LegacyPlanner(self)
-    self.executor: "AbstractExecutor" = LegacyExecutor(self)
-    self.reflector: "AbstractReflector" = LegacyReflector(self)
-    self.converser: "AbstractConverser" = LegacyConverser(self)
+    self.perceiver: "AbstractPerceiver" = perceiver
+    self.retriever: "AbstractRetriever" = retriever
+    self.planner: "AbstractPlanner" = planner
+    self.executor: "AbstractExecutor" = executor
+    self.reflector: "AbstractReflector" = reflector
+    self.converser: "AbstractConverser" = converser
+
+  @classmethod
+  def create_from_folder(cls, name: str, folder_mem_saved: str = "False") -> "Persona":
+    # Initialize the repository
+    repository = JsonMemoryRepository(folder_mem_saved)
+
+    # Load memories using the repository
+    s_mem = repository.load_spatial_memory()
+    a_mem = repository.load_associative_memory()
+    scratch = repository.load_scratch()
+    
+    # Link memories to scratch state
+    scratch.state.memory_system.spatial_memory = s_mem
+    scratch.state.memory_system.associative_memory = a_mem
+
+    # COGNITIVE MODULES
+    perceiver = LegacyPerceiver(scratch)
+    retriever = LegacyRetriever(scratch)
+    planner = LegacyPlanner(scratch)
+    executor = LegacyExecutor(scratch)
+    reflector = LegacyReflector(scratch)
+    converser = LegacyConverser(scratch)
+
+    return cls(name, repository, scratch, s_mem, a_mem,
+               perceiver, retriever, planner, executor, reflector, converser)
 
 
   def save(self, save_folder: str): 

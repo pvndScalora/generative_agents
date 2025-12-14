@@ -132,7 +132,7 @@ class ReverieServer:
       persona_folder = f"{sim_folder}/personas/{persona_name}"
       p_x = init_env[persona_name]["x"]
       p_y = init_env[persona_name]["y"]
-      curr_persona = Persona(persona_name, persona_folder)
+      curr_persona = Persona.create_from_folder(persona_name, persona_folder)
 
       self.personas[persona_name] = curr_persona
       self.personas_tile[persona_name] = (p_x, p_y)

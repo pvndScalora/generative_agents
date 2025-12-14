@@ -6,12 +6,14 @@ from persona.prompt_template.gpt_structure import get_embedding
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from persona.persona import Persona
+    from persona.memory_structures.scratch import Scratch
+    from persona.cognitive_modules.retriever.base import AbstractRetriever
     from reverie.backend_server.maze import Maze
 
 class LegacyConverser(AbstractConverser):
-    def __init__(self, persona: "Persona"):
-        self.persona = persona
+    def __init__(self, scratch: "Scratch", retriever: "AbstractRetriever"):
+        self.scratch = scratch
+        self.retriever = retriever
 
     def open_session(self, convo_mode: str): 
         if convo_mode == "analysis": 
@@ -23,16 +25,16 @@ class LegacyConverser(AbstractConverser):
                 if line == "end_convo": 
                     break
 
-                if int(run_gpt_generate_safety_score(self.persona, line)[0]) >= 8: 
-                    print (f"{self.persona.scratch.name} is a computational agent, and as such, it may be inappropriate to attribute human agency to the agent in your communication.")        
+                if int(run_gpt_generate_safety_score(self.scratch, line)[0]) >= 8: 
+                    print (f"{self.scratch.name} is a computational agent, and as such, it may be inappropriate to attribute human agency to the agent in your communication.")        
 
                 else: 
-                    retrieved = self.persona.retriever.retrieve_weighted([line], 50)[line]
+                    retrieved = self.retriever.retrieve_weighted([line], 50)[line]
                     summarized_idea = self._generate_summarize_ideas(retrieved, line)
                     curr_convo += [[interlocutor_desc, line]]
 
                     next_line = self._generate_next_line(interlocutor_desc, curr_convo, summarized_idea)
-                    curr_convo += [[self.persona.scratch.name, next_line]]
+                    curr_convo += [[self.scratch.name, next_line]]
 
 
         elif convo_mode == "whisper": 
@@ -42,13 +44,13 @@ class LegacyConverser(AbstractConverser):
     def receive_whisper(self, whisper):
         thought = self._generate_inner_thought(whisper)
 
-        created = self.persona.scratch.curr_time
-        expiration = self.persona.scratch.curr_time + datetime.timedelta(days=30)
+        created = self.scratch.curr_time
+        expiration = self.scratch.curr_time + datetime.timedelta(days=30)
         s, p, o = self._generate_action_event_triple(thought)
         keywords = set([s, p, o])
         thought_poignancy = self._generate_poig_score("event", whisper)
         thought_embedding_pair = (thought, get_embedding(thought))
-        self.persona.a_mem.add_thought(created, expiration, s, p, o, 
+        self.scratch.a_mem.add_thought(created, expiration, s, p, o, 
                                 thought, keywords, thought_poignancy, 
                                 thought_embedding_pair, None)
 
@@ -58,8 +60,8 @@ class LegacyConverser(AbstractConverser):
 
         for i in range(8): 
             focal_points = [f"{target_persona.scratch.name}"]
-            retrieved = self.persona.retriever.retrieve_weighted(focal_points, 50)
-            relationship = self._generate_summarize_agent_relationship(self.persona, target_persona, retrieved)
+            retrieved = self.retriever.retrieve_weighted(focal_points, 50)
+            relationship = self._generate_summarize_agent_relationship(self.scratch, target_persona, retrieved)
             print ("-------- relationshopadsjfhkalsdjf", relationship)
             last_chat = ""
             for i in curr_chat[-4:]:
@@ -71,30 +73,30 @@ class LegacyConverser(AbstractConverser):
             else: 
                 focal_points = [f"{relationship}", 
                                 f"{target_persona.scratch.name} is {target_persona.scratch.act_description}"]
-            retrieved = self.persona.retriever.retrieve_weighted(focal_points, 15)
-            utt, end = self._generate_one_utterance(maze, self.persona, target_persona, retrieved, curr_chat)
+            retrieved = self.retriever.retrieve_weighted(focal_points, 15)
+            utt, end = self._generate_one_utterance(maze, self.scratch, target_persona, retrieved, curr_chat)
 
-            curr_chat += [[self.persona.scratch.name, utt]]
+            curr_chat += [[self.scratch.name, utt]]
             if end:
                 break
 
 
-            focal_points = [f"{self.persona.scratch.name}"]
+            focal_points = [f"{self.scratch.name}"]
             retrieved = target_persona.retriever.retrieve_weighted(focal_points, 50)
-            relationship = self._generate_summarize_agent_relationship(target_persona, self.persona, retrieved)
+            relationship = self._generate_summarize_agent_relationship(target_persona, self.scratch, retrieved)
             print ("-------- relationshopadsjfhkalsdjf", relationship)
             last_chat = ""
             for i in curr_chat[-4:]:
                 last_chat += ": ".join(i) + "\n"
             if last_chat: 
                 focal_points = [f"{relationship}", 
-                                f"{self.persona.scratch.name} is {self.persona.scratch.act_description}", 
+                                f"{self.scratch.name} is {self.scratch.act_description}", 
                                 last_chat]
             else: 
                 focal_points = [f"{relationship}", 
-                                f"{self.persona.scratch.name} is {self.persona.scratch.act_description}"]
+                                f"{self.scratch.name} is {self.scratch.act_description}"]
             retrieved = target_persona.retriever.retrieve_weighted(focal_points, 15)
-            utt, end = self._generate_one_utterance(maze, target_persona, self.persona, retrieved, curr_chat)
+            utt, end = self._generate_one_utterance(maze, target_persona, self.scratch, retrieved, curr_chat)
 
             curr_chat += [[target_persona.scratch.name, utt]]
             if end:
@@ -111,7 +113,7 @@ class LegacyConverser(AbstractConverser):
         statements = ""
         for n in nodes:
             statements += f"{n.embedding_key}\n"
-        summarized_idea = run_gpt_prompt_summarize_ideas(self.persona, statements, question)[0]
+        summarized_idea = run_gpt_prompt_summarize_ideas(self.scratch, statements, question)[0]
         return summarized_idea
 
     def _generate_next_line(self, interlocutor_desc, curr_convo, summarized_idea):
@@ -120,19 +122,19 @@ class LegacyConverser(AbstractConverser):
         for row in curr_convo: 
             prev_convo += f'{row[0]}: {row[1]}\n'
 
-        next_line = run_gpt_prompt_generate_next_convo_line(self.persona, 
+        next_line = run_gpt_prompt_generate_next_convo_line(self.scratch, 
                                                             interlocutor_desc, 
                                                             prev_convo, 
                                                             summarized_idea)[0]  
         return next_line
 
     def _generate_inner_thought(self, whisper):
-        inner_thought = run_gpt_prompt_generate_whisper_inner_thought(self.persona, whisper)[0]
+        inner_thought = run_gpt_prompt_generate_whisper_inner_thought(self.scratch, whisper)[0]
         return inner_thought
 
     def _generate_action_event_triple(self, act_desp): 
         logging.debug("GNS FUNCTION: <generate_action_event_triple>")
-        return run_gpt_prompt_event_triple(act_desp, self.persona)[0]
+        return run_gpt_prompt_event_triple(act_desp, self.scratch)[0]
 
     def _generate_poig_score(self, event_type, description): 
         logging.debug("GNS FUNCTION: <generate_poig_score>")
@@ -141,10 +143,10 @@ class LegacyConverser(AbstractConverser):
             return 1
 
         if event_type == "event" or event_type == "thought": 
-            return run_gpt_prompt_event_poignancy(self.persona, description)[0]
+            return run_gpt_prompt_event_poignancy(self.scratch, description)[0]
         elif event_type == "chat": 
-            return run_gpt_prompt_chat_poignancy(self.persona, 
-                                self.persona.scratch.act_description)[0]
+            return run_gpt_prompt_chat_poignancy(self.scratch, 
+                                self.scratch.act_description)[0]
 
     def _generate_summarize_agent_relationship(self, init_persona, target_persona, retrieved): 
         all_embedding_keys = list()
