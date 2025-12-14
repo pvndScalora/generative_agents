@@ -15,7 +15,7 @@ import datetime
 from reverie.backend_server.models import Memory, MemoryType
 
 class AssociativeMemory: 
-  def __init__(self, f_saved): 
+  def __init__(self, nodes_load, embeddings, kw_strength): 
     self.id_to_node = dict()
 
     self.seq_event = []
@@ -29,9 +29,8 @@ class AssociativeMemory:
     self.kw_strength_event = dict()
     self.kw_strength_thought = dict()
 
-    self.embeddings = json.load(open(f_saved + "/embeddings.json"))
+    self.embeddings = embeddings
 
-    nodes_load = json.load(open(f_saved + "/nodes.json"))
     for count in range(len(nodes_load.keys())): 
       node_id = f"node_{str(count+1)}"
       node_details = nodes_load[node_id]
@@ -69,14 +68,13 @@ class AssociativeMemory:
         self.add_thought(created, expiration, s, p, o, 
                    description, keywords, poignancy, embedding_pair, filling)
 
-    kw_strength_load = json.load(open(f_saved + "/kw_strength.json"))
-    if kw_strength_load["kw_strength_event"]: 
-      self.kw_strength_event = kw_strength_load["kw_strength_event"]
-    if kw_strength_load["kw_strength_thought"]: 
-      self.kw_strength_thought = kw_strength_load["kw_strength_thought"]
+    if kw_strength["kw_strength_event"]: 
+      self.kw_strength_event = kw_strength["kw_strength_event"]
+    if kw_strength["kw_strength_thought"]: 
+      self.kw_strength_thought = kw_strength["kw_strength_thought"]
 
     
-  def save(self, out_json): 
+  def get_state(self):
     r = dict()
     for count in range(len(self.id_to_node.keys()), 0, -1): 
       node_id = f"node_{str(count)}"
@@ -104,17 +102,15 @@ class AssociativeMemory:
       r[node_id]["keywords"] = list(node.keywords)
       r[node_id]["filling"] = node.filling
 
-    with open(out_json+"/nodes.json", "w") as outfile:
-      json.dump(r, outfile)
-
-    r = dict()
-    r["kw_strength_event"] = self.kw_strength_event
-    r["kw_strength_thought"] = self.kw_strength_thought
-    with open(out_json+"/kw_strength.json", "w") as outfile:
-      json.dump(r, outfile)
-
-    with open(out_json+"/embeddings.json", "w") as outfile:
-      json.dump(self.embeddings, outfile)
+    kw_strength = dict()
+    kw_strength["kw_strength_event"] = self.kw_strength_event
+    kw_strength["kw_strength_thought"] = self.kw_strength_thought
+    
+    return {
+        "nodes": r,
+        "kw_strength": kw_strength,
+        "embeddings": self.embeddings
+    }
 
 
   def add_event(self, created, expiration, s, p, o, 

@@ -13,7 +13,7 @@ from reverie.backend_server.models import PersonaIdentity, CognitiveParams, Curr
 from global_methods import check_if_file_exists
 
 class Scratch: 
-  def __init__(self, f_saved): 
+  def __init__(self, scratch_load): 
     # Initialize Data Models
     self.identity = PersonaIdentity(
         name="Placeholder Name", 
@@ -98,10 +98,7 @@ class Scratch:
     # e.g., [(50, 10), (49, 10), (48, 10), ...]
     self.planned_path = []
 
-    if check_if_file_exists(f_saved): 
-      # If we have a bootstrap file, load that here. 
-      scratch_load = json.load(open(f_saved))
-
+    if scratch_load: 
       self.cognitive_params.vision_r = scratch_load["vision_r"]
       self.cognitive_params.att_bandwidth = scratch_load["att_bandwidth"]
       self.cognitive_params.retention = scratch_load["retention"]
@@ -352,14 +349,9 @@ class Scratch:
   def act_obj_event(self, value): self.act.obj_event = value
 
 
-  def save(self, out_json):
+  def to_dict(self):
     """
-    Save persona's scratch. 
-
-    INPUT: 
-      out_json: The file where we wil be saving our persona's state. 
-    OUTPUT: 
-      None
+    Return persona's scratch as a dictionary. 
     """
     scratch = dict() 
     scratch["vision_r"] = self.vision_r
@@ -423,9 +415,8 @@ class Scratch:
 
     scratch["act_path_set"] = self.act_path_set
     scratch["planned_path"] = [p.as_tuple() for p in self.planned_path]
-
-    with open(out_json, "w") as outfile:
-      json.dump(scratch, outfile, indent=2) 
+    
+    return scratch 
 
 
   def get_f_daily_schedule_index(self, advance=0):

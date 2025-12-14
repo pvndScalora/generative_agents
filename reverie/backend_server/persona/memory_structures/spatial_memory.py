@@ -11,12 +11,30 @@ sys.path.append('../../')
 
 from config import *
 from global_methods import check_if_file_exists
+from reverie.backend_server.models import SpatialMemoryTree
 
 class MemoryTree: 
-  def __init__(self, f_saved): 
-    self.tree = {}
-    if check_if_file_exists(f_saved): 
-      self.tree = json.load(open(f_saved))
+  def __init__(self, tree: SpatialMemoryTree): 
+    """
+    Initialize the MemoryTree with a spatial tree structure.
+
+    The tree represents the hierarchy of the world:
+    World -> Sector -> Arena -> [Game Objects]
+
+    Example Tree:
+    {
+      "the Ville": {
+        "Isabella's Apartment": {
+          "Main Room": ["bed", "desk", "closet"],
+          "Bathroom": ["shower", "sink", "toilet"]
+        },
+        "Hobbs Cafe": {
+          "Cafe": ["counter", "table", "chair"]
+        }
+      }
+    }
+    """
+    self.tree = tree
 
 
   def print_tree(self): 
@@ -32,12 +50,7 @@ class MemoryTree:
           print (dash, key)
         _print_tree(val, depth+1)
     
-    _print_tree(self.tree, 0)
-    
-
-  def save(self, out_json):
-    with open(out_json, "w") as outfile:
-      json.dump(self.tree, outfile) 
+    _print_tree(self.tree, 0) 
 
 
 

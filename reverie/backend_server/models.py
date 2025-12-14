@@ -204,3 +204,19 @@ class CognitiveParams:
     vision_r: int = 4 # Number of tiles the persona can see
     att_bandwidth: int = 3 # Attention bandwidth
     retention: int = 5 # Memory retention factor
+
+# Type alias for the Spatial Memory Tree structure
+# Structure: World -> Sector -> Arena -> List[GameObjects]
+# Example Tree:
+# {
+#   "the Ville": {
+#     "Isabella's Apartment": {
+#       "Main Room": ["bed", "desk", "closet"],
+#       "Bathroom": ["shower", "sink", "toilet"]
+#     },
+#     "Hobbs Cafe": {
+#       "Cafe": ["counter", "table", "chair"]
+#     }
+#   }
+# }
+SpatialMemoryTree = Dict[str, Dict[str, Dict[str, List[str]]]]

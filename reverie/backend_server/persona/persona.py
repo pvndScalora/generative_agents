@@ -19,6 +19,7 @@ sys.path.append('../')
 from persona.memory_structures.spatial_memory import MemoryTree
 from persona.memory_structures.associative_memory import AssociativeMemory
 from persona.memory_structures.scratch import Scratch
+from persona.memory_structures.repository import JsonMemoryRepository, MemoryRepository
 
 if TYPE_CHECKING:
     from reverie.backend_server.maze import Maze
@@ -45,17 +46,13 @@ class Persona:
     self.name: str = name
 
     # PERSONA MEMORY 
-    # If there is already memory in folder_mem_saved, we load that. Otherwise,
-    # we create new memory instances. 
-    # <s_mem> is the persona's spatial memory. 
-    f_s_mem_saved = f"{folder_mem_saved}/bootstrap_memory/spatial_memory.json"
-    self.s_mem: MemoryTree = MemoryTree(f_s_mem_saved)
-    # <s_mem> is the persona's associative memory. 
-    f_a_mem_saved = f"{folder_mem_saved}/bootstrap_memory/associative_memory"
-    self.a_mem: AssociativeMemory = AssociativeMemory(f_a_mem_saved)
-    # <scratch> is the persona's scratch (short term memory) space. 
-    scratch_saved = f"{folder_mem_saved}/bootstrap_memory/scratch.json"
-    self.scratch: Scratch = Scratch(scratch_saved)
+    # Initialize the repository
+    self.repository: MemoryRepository = JsonMemoryRepository(folder_mem_saved)
+
+    # Load memories using the repository
+    self.s_mem: MemoryTree = self.repository.load_spatial_memory()
+    self.a_mem: AssociativeMemory = self.repository.load_associative_memory()
+    self.scratch: Scratch = self.repository.load_scratch()
 
     # COGNITIVE MODULES
     self.perceiver: "AbstractPerceiver" = LegacyPerceiver(self)
@@ -75,25 +72,10 @@ class Persona:
     OUTPUT: 
       None
     """
-    # Spatial memory contains a tree in a json format. 
-    # e.g., {"double studio": 
-    #         {"double studio": 
-    #           {"bedroom 2": 
-    #             ["painting", "easel", "closet", "bed"]}}}
-    f_s_mem = f"{save_folder}/spatial_memory.json"
-    self.s_mem.save(f_s_mem)
-    
-    # Associative memory contains a csv with the following rows: 
-    # [event.type, event.created, event.expiration, s, p, o]
-    # e.g., event,2022-10-23 00:00:00,,Isabella Rodriguez,is,idle
-    f_a_mem = f"{save_folder}/associative_memory"
-    self.a_mem.save(f_a_mem)
-
-    # Scratch contains non-permanent data associated with the persona. When 
-    # it is saved, it takes a json form. When we load it, we move the values
-    # to Python variables. 
-    f_scratch = f"{save_folder}/scratch.json"
-    self.scratch.save(f_scratch)
+    # Use the repository to save memories
+    self.repository.save_spatial_memory(self.s_mem, save_folder)
+    self.repository.save_associative_memory(self.a_mem, save_folder)
+    self.repository.save_scratch(self.scratch, save_folder)
 
 
   def perceive(self, maze: "Maze") -> List["Memory"]:
