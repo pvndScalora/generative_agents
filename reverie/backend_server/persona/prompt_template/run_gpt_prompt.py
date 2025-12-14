@@ -15,9 +15,52 @@ import json
 
 sys.path.append('../../')
 
-from persona.prompt_template.gpt_structure import *
-from persona.prompt_template.print_prompt import *
-from persona.prompt_template.prompts import *
+from persona.prompt_template.gpt_structure import (
+    llm_service, 
+    ChatGPT_safe_generate_response_OLD, 
+    generate_prompt, 
+    ChatGPT_single_request,
+    DEBUG
+)
+from persona.prompt_template.print_prompt import print_run_prompts
+from persona.prompt_template.prompts import (
+    WakeUpHourPrompt,
+    DailyPlanPrompt,
+    HourlySchedulePrompt,
+    TaskDecompPrompt,
+    ActionSectorPrompt,
+    ActionArenaPrompt,
+    ActionGameObjectPrompt,
+    PronunciatioPrompt,
+    EventTriplePrompt,
+    ActObjDescPrompt,
+    ActObjEventTriplePrompt,
+    NewDecompSchedulePrompt,
+    DecideToTalkPrompt,
+    DecideToReactPrompt,
+    CreateConversationPrompt,
+    SummarizeConversationPrompt,
+    ExtractKeywordsPrompt,
+    KeywordToThoughtsPrompt,
+    ConvoToThoughtsPrompt,
+    EventPoignancyPrompt,
+    ThoughtPoignancyPrompt,
+    ChatPoignancyPrompt,
+    FocalPtPrompt,
+    InsightAndGuidancePrompt,
+    AgentChatSummarizeIdeasPrompt,
+    AgentChatSummarizeRelationshipPrompt,
+    AgentChatPrompt,
+    SummarizeIdeasPrompt,
+    GenerateNextConvoLinePrompt,
+    WhisperInnerThoughtPrompt,
+    PlanningThoughtOnConvoPrompt,
+    MemoOnConvoPrompt
+)
+from persona.prompt_template.executor import PromptExecutor
+
+# Initialize the executor with the service from gpt_structure
+prompt_executor = PromptExecutor(llm_service)
 
 def get_random_alphanumeric(i=6, j=6): 
   """
@@ -35,22 +78,37 @@ def get_random_alphanumeric(i=6, j=6):
   return x
 
 def safe_execute_prompt(prompt_instance, gpt_param, test_input=None):
-  prompt_input = prompt_instance.create_prompt_input(test_input)
-  prompt = generate_prompt(prompt_input, prompt_instance.prompt_template)
-  fail_safe = prompt_instance.get_fail_safe()
+  # Map legacy parameters
+  model = gpt_param.get("engine", "gpt-3.5-turbo-instruct")
+  if model == "text-davinci-003":
+      model = "gpt-3.5-turbo-instruct"
+      
+  # Extract other parameters
+  temperature = gpt_param.get("temperature", 0.7)
+  max_tokens = gpt_param.get("max_tokens", None)
+  
+  # Filter out keys that are not for the LLM call or need mapping
+  kwargs = {k: v for k, v in gpt_param.items() if k not in ["engine", "temperature", "max_tokens"]}
 
-  if prompt_instance.example_output is not None and prompt_instance.special_instruction is not None:
-    output = ChatGPT_safe_generate_response(prompt, prompt_instance.example_output, prompt_instance.special_instruction, 3, fail_safe,
-                                            prompt_instance.validate, prompt_instance.clean_up, True)
-  else:
-    output = safe_generate_response(prompt, gpt_param, 5, fail_safe,
-                                     prompt_instance.validate, prompt_instance.clean_up)
+  output = prompt_executor.execute(
+      prompt_instance,
+      test_input,
+      model=model,
+      temperature=temperature,
+      max_tokens=max_tokens,
+      **kwargs
+  )
+  
+  # Reconstruct debug info
+  prompt_input = prompt_instance.create_prompt_input(test_input)
+  prompt_text = prompt_executor._generate_prompt_text(prompt_instance, test_input)
+  fail_safe = prompt_instance.get_fail_safe()
   
   if DEBUG or prompt_instance.verbose: 
     print_run_prompts(prompt_instance.prompt_template, prompt_instance.persona, gpt_param, 
-                      prompt_input, prompt, output)
+                      prompt_input, prompt_text, output)
     
-  return output, [output, prompt, gpt_param, prompt_input, fail_safe]
+  return output, [output, prompt_text, gpt_param, prompt_input, fail_safe]
 
 def get_gpt_param(override_params=None):
   gpt_param = {"engine": "gpt-3.5-turbo-instruct", "max_tokens": 50, 

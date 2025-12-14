@@ -68,10 +68,10 @@ class TestPersona(unittest.TestCase):
         # Verify modules are initialized with the scratch instance
         self.mock_perceiver_cls.assert_called_with(scratch)
         self.mock_retriever_cls.assert_called_with(scratch)
-        self.mock_planner_cls.assert_called_with(scratch)
+        self.mock_planner_cls.assert_called_with(scratch, self.mock_retriever_cls.return_value, self.mock_converser_cls.return_value)
         self.mock_executor_cls.assert_called_with(scratch)
         self.mock_reflector_cls.assert_called_with(scratch)
-        self.mock_converser_cls.assert_called_with(scratch)
+        self.mock_converser_cls.assert_called_with(scratch, self.mock_retriever_cls.return_value)
 
     def test_save(self):
         """
