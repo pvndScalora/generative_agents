@@ -22,6 +22,7 @@ from persona.memory_structures.scratch import Scratch
 
 if TYPE_CHECKING:
     from reverie.backend_server.maze import Maze
+    from reverie.backend_server.models import Memory, PlanExecution
     from persona.cognitive_modules.perceiver.base import AbstractPerceiver
     from persona.cognitive_modules.retriever.base import AbstractRetriever
     from persona.cognitive_modules.planner.base import AbstractPlanner
@@ -95,7 +96,7 @@ class Persona:
     self.scratch.save(f_scratch)
 
 
-  def perceive(self, maze: "Maze"):
+  def perceive(self, maze: "Maze") -> List["Memory"]:
     """
     This function takes the current maze, and returns events that are 
     happening around the persona. Importantly, perceive is guided by 
@@ -124,7 +125,7 @@ class Persona:
     return self.perceiver.perceive(maze)
 
 
-  def retrieve(self, perceived: List[Any]):
+  def retrieve(self, perceived: List["Memory"]):
     """
     This function takes the events that are perceived by the persona as input
     and returns a set of related events and thoughts that the persona would 
@@ -165,7 +166,7 @@ class Persona:
     return self.planner.plan(maze, personas, new_day, retrieved)
 
 
-  def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str):
+  def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str) -> "PlanExecution":
     """
     This function takes the agent's current plan and outputs a concrete 
     execution (what object to use, and what tile to travel to). 
@@ -199,7 +200,7 @@ class Persona:
     self.reflector.reflect()
 
 
-  def move(self, maze: "Maze", personas: Dict[str, "Persona"], curr_tile: Tuple[int, int], curr_time: datetime.datetime):
+  def move(self, maze: "Maze", personas: Dict[str, "Persona"], curr_tile: Tuple[int, int], curr_time: datetime.datetime) -> "PlanExecution":
     """
     This is the main cognitive function where our main sequence is called. 
 

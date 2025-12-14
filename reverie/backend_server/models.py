@@ -51,6 +51,19 @@ class Action:
         return (self.description, self.duration)[item]
 
 @dataclass
+class PlanExecution:
+    """
+    Represents the concrete execution details for a time step.
+    """
+    next_tile: Tuple[int, int]
+    pronunciatio: str
+    description: str
+
+    def __iter__(self):
+        return iter((self.next_tile, self.pronunciatio, self.description))
+
+
+@dataclass
 class CurrentAction:
     """
     Represents the action currently being executed by the persona.

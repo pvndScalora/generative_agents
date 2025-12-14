@@ -3,6 +3,7 @@ from .base import AbstractExecutor
 from reverie.backend_server.path_finder import path_finder
 from reverie.backend_server.config import COLLISION_BLOCK_ID
 from typing import Dict, Any, TYPE_CHECKING
+from reverie.backend_server.models import PlanExecution
 
 if TYPE_CHECKING:
     from persona.persona import Persona
@@ -12,7 +13,7 @@ class LegacyExecutor(AbstractExecutor):
     def __init__(self, persona: "Persona"):
         self.persona = persona
 
-    def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str): 
+    def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str) -> PlanExecution: 
         """
         Given a plan (action's string address), we execute the plan (actually 
         outputs the tile coordinate path and the next coordinate for the 
@@ -141,5 +142,9 @@ class LegacyExecutor(AbstractExecutor):
         description = f"{self.persona.scratch.act_description}"
         description += f" @ {self.persona.scratch.act_address}"
 
-        execution = ret, self.persona.scratch.act_pronunciatio, description
+        execution = PlanExecution(
+            next_tile=ret,
+            pronunciatio=self.persona.scratch.act_pronunciatio,
+            description=description
+        )
         return execution
