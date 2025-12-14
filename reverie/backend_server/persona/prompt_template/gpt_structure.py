@@ -6,24 +6,25 @@ Description: Wrapper functions for calling OpenAI APIs.
 """
 import json
 import random
-import openai
 import time 
 
 from config import *
+from reverie.backend_server.infra.llm import LLMService, OpenAIProvider
 
-openai.api_key = OPENAI_API_KEY
+# Initialize LLM Service
+provider = OpenAIProvider(api_key=OPENAI_API_KEY)
+llm_service = LLMService(provider=provider)
 
 def temp_sleep(seconds=0.1):
   time.sleep(seconds)
 
 def ChatGPT_single_request(prompt): 
-  temp_sleep()
+  # temp_sleep() # Service handles rate limits
 
-  completion = openai.ChatCompletion.create(
+  return llm_service.chat_completion(
     model="gpt-3.5-turbo", 
     messages=[{"role": "user", "content": prompt}]
   )
-  return completion["choices"][0]["message"]["content"]
 
 
 # ============================================================================
@@ -42,17 +43,16 @@ def GPT4_request(prompt):
   RETURNS: 
     a str of GPT-3's response. 
   """
-  temp_sleep()
+  # temp_sleep()
 
   try: 
-    completion = openai.ChatCompletion.create(
-    model="gpt-4", 
-    messages=[{"role": "user", "content": prompt}]
+    return llm_service.chat_completion(
+      model="gpt-4", 
+      messages=[{"role": "user", "content": prompt}]
     )
-    return completion["choices"][0]["message"]["content"]
   
-  except: 
-    print ("ChatGPT ERROR")
+  except Exception as e: 
+    print (f"ChatGPT ERROR: {e}")
     return "ChatGPT ERROR"
 
 
@@ -70,14 +70,13 @@ def ChatGPT_request(prompt):
   """
   # temp_sleep()
   try: 
-    completion = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo", 
-    messages=[{"role": "user", "content": prompt}]
+    return llm_service.chat_completion(
+      model="gpt-3.5-turbo", 
+      messages=[{"role": "user", "content": prompt}]
     )
-    return completion["choices"][0]["message"]["content"]
   
-  except: 
-    print ("ChatGPT ERROR")
+  except Exception as e: 
+    print (f"ChatGPT ERROR: {e}")
     return "ChatGPT ERROR"
 
 
@@ -206,19 +205,22 @@ def GPT_request(prompt, gpt_parameter):
   RETURNS: 
     a str of GPT-3's response. 
   """
-  temp_sleep()
+  # temp_sleep()
   try: 
-    response = openai.Completion.create(
-                model=gpt_parameter["engine"],
-                prompt=prompt,
-                temperature=gpt_parameter["temperature"],
-                max_tokens=gpt_parameter["max_tokens"],
-                top_p=gpt_parameter["top_p"],
-                frequency_penalty=gpt_parameter["frequency_penalty"],
-                presence_penalty=gpt_parameter["presence_penalty"],
-                stream=gpt_parameter["stream"],
-                stop=gpt_parameter["stop"],)
-    return response.choices[0].text
+    return llm_service.completion(
+      model=gpt_parameter["engine"],
+      prompt=prompt,
+      temperature=gpt_parameter["temperature"],
+      max_tokens=gpt_parameter["max_tokens"],
+      top_p=gpt_parameter["top_p"],
+      frequency_penalty=gpt_parameter["frequency_penalty"],
+      presence_penalty=gpt_parameter["presence_penalty"],
+      stream=gpt_parameter["stream"],
+      stop=gpt_parameter["stop"]
+    )
+  except Exception as e:
+    print(f"GPT ERROR: {e}")
+    return "GPT ERROR"
   except: 
     print ("TOKEN LIMIT EXCEEDED")
     return "TOKEN LIMIT EXCEEDED"
@@ -277,8 +279,7 @@ def get_embedding(text, model="text-embedding-ada-002"):
   text = text.replace("\n", " ")
   if not text: 
     text = "this is blank"
-  return openai.Embedding.create(
-          input=[text], model=model)['data'][0]['embedding']
+  return llm_service.embedding(text, model=model)
 
 
 if __name__ == '__main__':
