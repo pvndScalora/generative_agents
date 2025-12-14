@@ -19,8 +19,8 @@ from persona.memory_structures.associative_memory import *
 from persona.memory_structures.scratch import *
 
 from persona.cognitive_modules.perceive import *
-from persona.cognitive_modules.retrieve import *
-from persona.cognitive_modules.plan import *
+from persona.cognitive_modules.retriever import LegacyRetriever
+from persona.cognitive_modules.planner import LegacyPlanner
 from persona.cognitive_modules.reflect import *
 from persona.cognitive_modules.execute import *
 from persona.cognitive_modules.converse import *
@@ -44,6 +44,10 @@ class Persona:
     # <scratch> is the persona's scratch (short term memory) space. 
     scratch_saved = f"{folder_mem_saved}/bootstrap_memory/scratch.json"
     self.scratch: Scratch = Scratch(scratch_saved)
+
+    # COGNITIVE MODULES
+    self.retriever = LegacyRetriever(self)
+    self.planner = LegacyPlanner(self)
 
 
   def save(self, save_folder): 
@@ -118,7 +122,7 @@ class Persona:
                  while the latter layer specifies the "curr_event", "events", 
                  and "thoughts" that are relevant.
     """
-    return retrieve(self, perceived)
+    return self.retriever.retrieve(perceived)
 
 
   def plan(self, maze, personas, new_day, retrieved):
@@ -143,7 +147,7 @@ class Persona:
     OUTPUT 
       The target action address of the persona (persona.scratch.act_address).
     """
-    return plan(self, maze, personas, new_day, retrieved)
+    return self.planner.plan(maze, personas, new_day, retrieved)
 
 
   def execute(self, maze, personas, plan):
