@@ -90,7 +90,7 @@ class Persona:
     converser = LegacyConverser(scratch, retriever)
     planner = LegacyPlanner(scratch, retriever, converser)
     executor = LegacyExecutor(scratch)
-    reflector = LegacyReflector(scratch)
+    reflector = LegacyReflector(scratch, retriever)
 
     persona = cls(name, repository, scratch, s_mem, a_mem,
                perceiver, retriever, planner, executor, reflector, converser)
