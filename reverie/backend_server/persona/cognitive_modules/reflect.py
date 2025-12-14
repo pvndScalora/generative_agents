@@ -16,7 +16,7 @@ from numpy.linalg import norm
 
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import *
-from persona.cognitive_modules.retrieve import *
+# from persona.cognitive_modules.retrieve import *
 
 def generate_focal_points(persona, n=3): 
   logging.debug("GNS FUNCTION: <generate_focal_points>")
@@ -110,7 +110,7 @@ def run_reflect(persona):
   focal_points = generate_focal_points(persona, 3)
   # Retrieve the relevant Nodes object for each of the focal points. 
   # <retrieved> has keys of focal points, and values of the associated Nodes. 
-  retrieved = new_retrieve(persona, focal_points)
+  retrieved = persona.retriever.retrieve_weighted(focal_points)
 
   # For each of the focal points, generate thoughts and save it in the 
   # agent's memory. 

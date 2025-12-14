@@ -24,7 +24,7 @@ from reverie.backend_server.persona.prompt_template.run_gpt_prompt import (
     ChatGPT_single_request
 )
 from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
-from reverie.backend_server.persona.cognitive_modules.converse import agent_chat_v2
+# from reverie.backend_server.persona.cognitive_modules.converse import agent_chat_v2
 from .base import AbstractPlanner
 
 class LegacyPlanner(AbstractPlanner):
@@ -475,7 +475,8 @@ class LegacyPlanner(AbstractPlanner):
 
     def _generate_convo(self, maze, init_persona, target_persona):
         # convo = agent_chat_v1(maze, init_persona, target_persona)
-        convo = agent_chat_v2(maze, init_persona, target_persona)
+        # convo = agent_chat_v2(maze, init_persona, target_persona)
+        convo = init_persona.converser.chat(maze, target_persona)
         all_utt = ""
         for row in convo: 
             speaker = row[0]

@@ -39,7 +39,7 @@ from global_methods import (
 from config import *
 from maze import *
 from persona.persona import *
-from persona.cognitive_modules.converse import load_history_via_whisper
+# from persona.cognitive_modules.converse import load_history_via_whisper
 from logging_config import setup_logging
 
 ##############################################################################
@@ -587,15 +587,17 @@ class ReverieServer:
           # call -- load history the_ville/agent_history_init_n3.csv
 
           rows = read_file_to_list(curr_file, header=True, strip_trail=True)[1]
-          clean_whispers = []
+          # clean_whispers = []
           for row in rows: 
             agent_name = row[0].strip() 
             whispers = row[1].split(";")
             whispers = [whisper.strip() for whisper in whispers]
             for whisper in whispers: 
-              clean_whispers += [[agent_name, whisper]]
+              # clean_whispers += [[agent_name, whisper]]
+              if agent_name in self.personas:
+                self.personas[agent_name].converser.receive_whisper(whisper)
 
-          load_history_via_whisper(self.personas, clean_whispers)
+          # load_history_via_whisper(self.personas, clean_whispers)
 
         print (ret_str)
 

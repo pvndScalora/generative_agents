@@ -18,12 +18,12 @@ from persona.memory_structures.spatial_memory import *
 from persona.memory_structures.associative_memory import *
 from persona.memory_structures.scratch import *
 
-from persona.cognitive_modules.perceive import *
+from persona.cognitive_modules.perceiver import LegacyPerceiver
 from persona.cognitive_modules.retriever import LegacyRetriever
 from persona.cognitive_modules.planner import LegacyPlanner
-from persona.cognitive_modules.reflect import *
-from persona.cognitive_modules.execute import *
-from persona.cognitive_modules.converse import *
+from persona.cognitive_modules.reflector import LegacyReflector
+from persona.cognitive_modules.executor import LegacyExecutor
+from persona.cognitive_modules.converser import LegacyConverser
 
 class Persona: 
   def __init__(self, name, folder_mem_saved=False):
@@ -46,8 +46,12 @@ class Persona:
     self.scratch: Scratch = Scratch(scratch_saved)
 
     # COGNITIVE MODULES
+    self.perceiver = LegacyPerceiver(self)
     self.retriever = LegacyRetriever(self)
     self.planner = LegacyPlanner(self)
+    self.executor = LegacyExecutor(self)
+    self.reflector = LegacyReflector(self)
+    self.converser = LegacyConverser(self)
 
 
   def save(self, save_folder): 
@@ -106,7 +110,7 @@ class Persona:
         See associative_memory.py -- but to get you a sense of what it 
         receives as its input: "s, p, o, desc, persona.scratch.curr_time"
     """
-    return perceive(self, maze)
+    return self.perceiver.perceive(maze)
 
 
   def retrieve(self, perceived):
@@ -169,7 +173,7 @@ class Persona:
         writing her next novel (editing her novel) 
         @ double studio:double studio:common room:sofa
     """
-    return execute(self, maze, personas, plan)
+    return self.executor.execute(maze, personas, plan)
 
 
   def reflect(self):
@@ -181,7 +185,7 @@ class Persona:
     OUTPUT: 
       None
     """
-    reflect(self)
+    self.reflector.reflect()
 
 
   def move(self, maze, personas, curr_tile, curr_time):
@@ -234,7 +238,7 @@ class Persona:
 
 
   def open_convo_session(self, convo_mode): 
-    open_convo_session(self, convo_mode)
+    self.converser.open_session(convo_mode)
     
 
 

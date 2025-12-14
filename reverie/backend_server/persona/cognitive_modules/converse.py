@@ -14,7 +14,7 @@ sys.path.append('../')
 from persona.memory_structures.spatial_memory import *
 from persona.memory_structures.associative_memory import *
 from persona.memory_structures.scratch import *
-from persona.cognitive_modules.retrieve import *
+# from persona.cognitive_modules.retrieve import *
 from persona.prompt_template.run_gpt_prompt import *
 
 def generate_agent_chat_summarize_ideas(init_persona, 
@@ -88,11 +88,11 @@ def agent_chat_v1(maze, init_persona, target_persona):
                 (target_persona, init_persona)]
   for p_1, p_2 in part_pairs: 
     focal_points = [f"{p_2.scratch.name}"]
-    retrieved = new_retrieve(p_1, focal_points, 50)
+    retrieved = p_1.retriever.retrieve_weighted(focal_points, 50)
     relationship = generate_summarize_agent_relationship(p_1, p_2, retrieved)
     focal_points = [f"{relationship}", 
                     f"{p_2.scratch.name} is {p_2.scratch.act_description}"]
-    retrieved = new_retrieve(p_1, focal_points, 25)
+    retrieved = p_1.retriever.retrieve_weighted(focal_points, 25)
     summarized_idea = generate_agent_chat_summarize_ideas(p_1, p_2, retrieved, curr_context)
     summarized_ideas += [summarized_idea]
 
@@ -128,7 +128,7 @@ def agent_chat_v2(maze, init_persona, target_persona):
 
   for i in range(8): 
     focal_points = [f"{target_persona.scratch.name}"]
-    retrieved = new_retrieve(init_persona, focal_points, 50)
+    retrieved = init_persona.retriever.retrieve_weighted(focal_points, 50)
     relationship = generate_summarize_agent_relationship(init_persona, target_persona, retrieved)
     print ("-------- relationshopadsjfhkalsdjf", relationship)
     last_chat = ""
@@ -141,7 +141,7 @@ def agent_chat_v2(maze, init_persona, target_persona):
     else: 
       focal_points = [f"{relationship}", 
                       f"{target_persona.scratch.name} is {target_persona.scratch.act_description}"]
-    retrieved = new_retrieve(init_persona, focal_points, 15)
+    retrieved = init_persona.retriever.retrieve_weighted(focal_points, 15)
     utt, end = generate_one_utterance(maze, init_persona, target_persona, retrieved, curr_chat)
 
     curr_chat += [[init_persona.scratch.name, utt]]
@@ -150,7 +150,7 @@ def agent_chat_v2(maze, init_persona, target_persona):
 
 
     focal_points = [f"{init_persona.scratch.name}"]
-    retrieved = new_retrieve(target_persona, focal_points, 50)
+    retrieved = target_persona.retriever.retrieve_weighted(focal_points, 50)
     relationship = generate_summarize_agent_relationship(target_persona, init_persona, retrieved)
     print ("-------- relationshopadsjfhkalsdjf", relationship)
     last_chat = ""
@@ -163,7 +163,7 @@ def agent_chat_v2(maze, init_persona, target_persona):
     else: 
       focal_points = [f"{relationship}", 
                       f"{init_persona.scratch.name} is {init_persona.scratch.act_description}"]
-    retrieved = new_retrieve(target_persona, focal_points, 15)
+    retrieved = target_persona.retriever.retrieve_weighted(focal_points, 15)
     utt, end = generate_one_utterance(maze, target_persona, init_persona, retrieved, curr_chat)
 
     curr_chat += [[target_persona.scratch.name, utt]]
@@ -267,7 +267,7 @@ def open_convo_session(persona, convo_mode):
         print (f"{persona.scratch.name} is a computational agent, and as such, it may be inappropriate to attribute human agency to the agent in your communication.")        
 
       else: 
-        retrieved = new_retrieve(persona, [line], 50)[line]
+        retrieved = persona.retriever.retrieve_weighted([line], 50)[line]
         summarized_idea = generate_summarize_ideas(persona, retrieved, line)
         curr_convo += [[interlocutor_desc, line]]
 
