@@ -3,12 +3,17 @@ import logging
 from .base import AbstractConverser
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import get_embedding
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from persona.persona import Persona
+    from reverie.backend_server.maze import Maze
 
 class LegacyConverser(AbstractConverser):
-    def __init__(self, persona):
+    def __init__(self, persona: "Persona"):
         self.persona = persona
 
-    def open_session(self, convo_mode): 
+    def open_session(self, convo_mode: str): 
         if convo_mode == "analysis": 
             curr_convo = []
             interlocutor_desc = "Interviewer"
@@ -47,7 +52,7 @@ class LegacyConverser(AbstractConverser):
                                 thought, keywords, thought_poignancy, 
                                 thought_embedding_pair, None)
 
-    def chat(self, maze, target_persona): 
+    def chat(self, maze: "Maze", target_persona: "Persona"): 
         curr_chat = []
         print ("July 23")
 

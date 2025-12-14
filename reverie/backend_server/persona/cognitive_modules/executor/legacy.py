@@ -2,12 +2,17 @@ import random
 from .base import AbstractExecutor
 from reverie.backend_server.path_finder import path_finder
 from reverie.backend_server.config import COLLISION_BLOCK_ID
+from typing import Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from persona.persona import Persona
+    from reverie.backend_server.maze import Maze
 
 class LegacyExecutor(AbstractExecutor):
-    def __init__(self, persona):
+    def __init__(self, persona: "Persona"):
         self.persona = persona
 
-    def execute(self, maze, personas, plan): 
+    def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str): 
         """
         Given a plan (action's string address), we execute the plan (actually 
         outputs the tile coordinate path and the next coordinate for the 

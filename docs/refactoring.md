@@ -107,4 +107,5 @@ To achieve robustness and modularity, we will move from a "God Object" pattern t
     *   **Data Model Integration:** Refactor `scratch.py`, `associative_memory.py`, and `spatial_memory.py` to use the new `models.py` dataclasses (`PersonaIdentity`, `Action`, `Memory`, `Coordinate`).
     *   **Module Abstraction:** Refactor `plan.py` and `retrieve.py` to use the Strategy Pattern, allowing for swappable implementations.
     *   **Persona Deconstruction:** Update the main `Persona` class to act as a controller, injecting dependencies into the cognitive modules.
+    *   **Memory Backend Abstraction:** refactor to use the repository pattern.
     *   **LLM Gateway:** Implement a centralized service for LLM calls with retry logic and cost tracking.

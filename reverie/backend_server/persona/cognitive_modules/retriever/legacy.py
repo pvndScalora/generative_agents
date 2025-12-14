@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, TYPE_CHECKING
 from numpy import dot
 from numpy.linalg import norm
 
@@ -6,13 +6,16 @@ from reverie.backend_server.models import Memory
 from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
 from .base import AbstractRetriever
 
+if TYPE_CHECKING:
+    from persona.persona import Persona
+
 class LegacyRetriever(AbstractRetriever):
     """
     The legacy implementation of the retrieval module.
     Uses a weighted score of Recency, Importance, and Relevance.
     """
 
-    def __init__(self, persona):
+    def __init__(self, persona: "Persona"):
         self.persona = persona
 
     def retrieve(self, perceived: List[Memory]) -> Dict[str, Dict[str, Any]]:

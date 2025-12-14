@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from reverie.backend_server.maze import Maze
+    from persona.persona import Persona
 
 class AbstractConverser(ABC):
     @abstractmethod
-    def open_session(self, convo_mode):
+    def open_session(self, convo_mode: str):
         pass
 
     @abstractmethod
-    def chat(self, maze, target_persona):
+    def chat(self, maze: "Maze", target_persona: "Persona"):
         pass

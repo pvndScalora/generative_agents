@@ -4,12 +4,17 @@ from operator import itemgetter
 from .base import AbstractPerceiver
 from persona.prompt_template.gpt_structure import get_embedding
 from persona.prompt_template.run_gpt_prompt import run_gpt_prompt_event_poignancy, run_gpt_prompt_chat_poignancy
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from persona.persona import Persona
+    from reverie.backend_server.maze import Maze
 
 class LegacyPerceiver(AbstractPerceiver):
-    def __init__(self, persona):
+    def __init__(self, persona: "Persona"):
         self.persona = persona
 
-    def perceive(self, maze):
+    def perceive(self, maze: "Maze"):
         """
         Perceives events around the persona and saves it to the memory, both events 
         and spaces. 

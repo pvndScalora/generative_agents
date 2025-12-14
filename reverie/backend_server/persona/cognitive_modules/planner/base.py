@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from reverie.backend_server.models import Memory
+
+if TYPE_CHECKING:
+    from reverie.backend_server.maze import Maze
+    from persona.persona import Persona
 
 class AbstractPlanner(ABC):
     """
@@ -11,7 +15,7 @@ class AbstractPlanner(ABC):
     """
 
     @abstractmethod
-    def plan(self, maze: Any, personas: Dict[str, Any], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
+    def plan(self, maze: "Maze", personas: Dict[str, "Persona"], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
         """
         Main cognitive function for planning.
 

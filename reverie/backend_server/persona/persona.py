@@ -12,11 +12,22 @@ import math
 import sys
 import datetime
 import random
+from typing import List, Dict, Any, Optional, Set, Tuple, TYPE_CHECKING
+
 sys.path.append('../')
 
-from persona.memory_structures.spatial_memory import *
-from persona.memory_structures.associative_memory import *
-from persona.memory_structures.scratch import *
+from persona.memory_structures.spatial_memory import MemoryTree
+from persona.memory_structures.associative_memory import AssociativeMemory
+from persona.memory_structures.scratch import Scratch
+
+if TYPE_CHECKING:
+    from reverie.backend_server.maze import Maze
+    from persona.cognitive_modules.perceiver.base import AbstractPerceiver
+    from persona.cognitive_modules.retriever.base import AbstractRetriever
+    from persona.cognitive_modules.planner.base import AbstractPlanner
+    from persona.cognitive_modules.reflector.base import AbstractReflector
+    from persona.cognitive_modules.executor.base import AbstractExecutor
+    from persona.cognitive_modules.converser.base import AbstractConverser
 
 from persona.cognitive_modules.perceiver import LegacyPerceiver
 from persona.cognitive_modules.retriever import LegacyRetriever
@@ -26,11 +37,11 @@ from persona.cognitive_modules.executor import LegacyExecutor
 from persona.cognitive_modules.converser import LegacyConverser
 
 class Persona: 
-  def __init__(self, name, folder_mem_saved=False):
+  def __init__(self, name: str, folder_mem_saved: str = "False"):
     # PERSONA BASE STATE 
     # <name> is the full name of the persona. This is a unique identifier for
     # the persona within Reverie. 
-    self.name = name
+    self.name: str = name
 
     # PERSONA MEMORY 
     # If there is already memory in folder_mem_saved, we load that. Otherwise,
@@ -46,15 +57,15 @@ class Persona:
     self.scratch: Scratch = Scratch(scratch_saved)
 
     # COGNITIVE MODULES
-    self.perceiver = LegacyPerceiver(self)
-    self.retriever = LegacyRetriever(self)
-    self.planner = LegacyPlanner(self)
-    self.executor = LegacyExecutor(self)
-    self.reflector = LegacyReflector(self)
-    self.converser = LegacyConverser(self)
+    self.perceiver: "AbstractPerceiver" = LegacyPerceiver(self)
+    self.retriever: "AbstractRetriever" = LegacyRetriever(self)
+    self.planner: "AbstractPlanner" = LegacyPlanner(self)
+    self.executor: "AbstractExecutor" = LegacyExecutor(self)
+    self.reflector: "AbstractReflector" = LegacyReflector(self)
+    self.converser: "AbstractConverser" = LegacyConverser(self)
 
 
-  def save(self, save_folder): 
+  def save(self, save_folder: str): 
     """
     Save persona's current state (i.e., memory). 
 
@@ -84,7 +95,7 @@ class Persona:
     self.scratch.save(f_scratch)
 
 
-  def perceive(self, maze):
+  def perceive(self, maze: "Maze"):
     """
     This function takes the current maze, and returns events that are 
     happening around the persona. Importantly, perceive is guided by 
@@ -113,7 +124,7 @@ class Persona:
     return self.perceiver.perceive(maze)
 
 
-  def retrieve(self, perceived):
+  def retrieve(self, perceived: List[Any]):
     """
     This function takes the events that are perceived by the persona as input
     and returns a set of related events and thoughts that the persona would 
@@ -129,7 +140,7 @@ class Persona:
     return self.retriever.retrieve(perceived)
 
 
-  def plan(self, maze, personas, new_day, retrieved):
+  def plan(self, maze: "Maze", personas: Dict[str, "Persona"], new_day: Any, retrieved: Dict[str, Any]):
     """
     Main cognitive function of the chain. It takes the retrieved memory and 
     perception, as well as the maze and the first day state to conduct both 
@@ -154,7 +165,7 @@ class Persona:
     return self.planner.plan(maze, personas, new_day, retrieved)
 
 
-  def execute(self, maze, personas, plan):
+  def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str):
     """
     This function takes the agent's current plan and outputs a concrete 
     execution (what object to use, and what tile to travel to). 
@@ -188,7 +199,7 @@ class Persona:
     self.reflector.reflect()
 
 
-  def move(self, maze, personas, curr_tile, curr_time):
+  def move(self, maze: "Maze", personas: Dict[str, "Persona"], curr_tile: Tuple[int, int], curr_time: datetime.datetime):
     """
     This is the main cognitive function where our main sequence is called. 
 
@@ -237,7 +248,7 @@ class Persona:
     return self.execute(maze, personas, plan)
 
 
-  def open_convo_session(self, convo_mode): 
+  def open_convo_session(self, convo_mode: str): 
     self.converser.open_session(convo_mode)
     
 

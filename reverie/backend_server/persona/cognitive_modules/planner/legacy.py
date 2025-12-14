@@ -2,7 +2,11 @@ import datetime
 import math
 import random
 import logging
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from reverie.backend_server.maze import Maze
+    from persona.persona import Persona
 
 from reverie.backend_server.models import Action
 from reverie.backend_server.persona.prompt_template.run_gpt_prompt import (
@@ -34,10 +38,10 @@ class LegacyPlanner(AbstractPlanner):
     and reaction to perceived events.
     """
 
-    def __init__(self, persona):
+    def __init__(self, persona: "Persona"):
         self.persona = persona
 
-    def plan(self, maze: Any, personas: Dict[str, Any], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
+    def plan(self, maze: "Maze", personas: Dict[str, "Persona"], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
         """
         Main cognitive function for planning.
         """

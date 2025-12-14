@@ -8,9 +8,13 @@ from numpy.linalg import norm
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import *
 from .base import AbstractReflector
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from persona.persona import Persona
 
 class LegacyReflector(AbstractReflector):
-    def __init__(self, persona):
+    def __init__(self, persona: "Persona"):
         self.persona = persona
 
     def reflect(self):
