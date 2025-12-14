@@ -39,8 +39,10 @@ class LegacyPlanner(AbstractPlanner):
     and reaction to perceived events.
     """
 
-    def __init__(self, scratch: "Scratch"):
+    def __init__(self, scratch: "Scratch", retriever: Any, converser: Any):
         self.scratch = scratch
+        self.retriever = retriever
+        self.converser = converser
 
     def plan(self, maze: "Maze", personas: Dict[str, "Persona"], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
         """
@@ -51,7 +53,7 @@ class LegacyPlanner(AbstractPlanner):
             self._long_term_planning(new_day)
 
         # PART 2: If the current action has expired, we want to create a new plan.
-        if self.persona.scratch.act_check_finished(): 
+        if self.scratch.act_check_finished(): 
             self._determine_action(maze)
 
         # PART 3: If you perceived an event that needs to be responded to
@@ -68,41 +70,41 @@ class LegacyPlanner(AbstractPlanner):
                     self._wait_react(reaction_mode)
 
         # Step 3: Chat-related state clean up. 
-        if self.persona.scratch.act_event[1] != "chat with":
-            self.persona.scratch.chatting_with = None
-            self.persona.scratch.chat = None
-            self.persona.scratch.chatting_end_time = None
+        if self.scratch.act_event[1] != "chat with":
+            self.scratch.chatting_with = None
+            self.scratch.chat = None
+            self.scratch.chatting_end_time = None
 
-        curr_persona_chat_buffer = self.persona.scratch.chatting_with_buffer
+        curr_persona_chat_buffer = self.scratch.chatting_with_buffer
         for persona_name, buffer_count in curr_persona_chat_buffer.items():
-            if persona_name != self.persona.scratch.chatting_with: 
-                self.persona.scratch.chatting_with_buffer[persona_name] -= 1
+            if persona_name != self.scratch.chatting_with: 
+                self.scratch.chatting_with_buffer[persona_name] -= 1
 
-        return self.persona.scratch.act_address
+        return self.scratch.act_address
 
     def _long_term_planning(self, new_day): 
         wake_up_hour = self._generate_wake_up_hour()
 
         if new_day == "First day": 
-            self.persona.scratch.daily_req = self._generate_first_daily_plan(wake_up_hour)
+            self.scratch.daily_req = self._generate_first_daily_plan(wake_up_hour)
         elif new_day == "New day":
             self._revise_identity()
-            self.persona.scratch.daily_req = self.persona.scratch.daily_req
+            self.scratch.daily_req = self.scratch.daily_req
 
-        self.persona.scratch.f_daily_schedule = self._generate_hourly_schedule(wake_up_hour)
-        self.persona.scratch.f_daily_schedule_hourly_org = (self.persona.scratch.f_daily_schedule[:])
+        self.scratch.f_daily_schedule = self._generate_hourly_schedule(wake_up_hour)
+        self.scratch.f_daily_schedule_hourly_org = (self.scratch.f_daily_schedule[:])
 
-        thought = f"This is {self.persona.scratch.name}'s plan for {self.persona.scratch.curr_time.strftime('%A %B %d')}:"
-        for i in self.persona.scratch.daily_req: 
+        thought = f"This is {self.scratch.name}'s plan for {self.scratch.curr_time.strftime('%A %B %d')}:"
+        for i in self.scratch.daily_req: 
             thought += f" {i},"
         thought = thought[:-1] + "."
-        created = self.persona.scratch.curr_time
-        expiration = self.persona.scratch.curr_time + datetime.timedelta(days=30)
-        s, p, o = (self.persona.scratch.name, "plan", self.persona.scratch.curr_time.strftime('%A %B %d'))
+        created = self.scratch.curr_time
+        expiration = self.scratch.curr_time + datetime.timedelta(days=30)
+        s, p, o = (self.scratch.name, "plan", self.scratch.curr_time.strftime('%A %B %d'))
         keywords = set(["plan"])
         thought_poignancy = 5
         thought_embedding_pair = (thought, get_embedding(thought))
-        self.persona.a_mem.add_thought(created, expiration, s, p, o, 
+        self.scratch.a_mem.add_thought(created, expiration, s, p, o, 
                                     thought, keywords, thought_poignancy, 
                                     thought_embedding_pair, None)
 
@@ -117,40 +119,40 @@ class LegacyPlanner(AbstractPlanner):
                     return False
             return True
 
-        curr_index = self.persona.scratch.get_f_daily_schedule_index()
-        curr_index_60 = self.persona.scratch.get_f_daily_schedule_index(advance=60)
+        curr_index = self.scratch.get_f_daily_schedule_index()
+        curr_index_60 = self.scratch.get_f_daily_schedule_index(advance=60)
 
         if curr_index == 0:
-            act_desp, act_dura = self.persona.scratch.f_daily_schedule[curr_index]
+            act_desp, act_dura = self.scratch.f_daily_schedule[curr_index]
             if act_dura >= 60: 
                 if determine_decomp(act_desp, act_dura): 
-                    self.persona.scratch.f_daily_schedule[curr_index:curr_index+1] = (
+                    self.scratch.f_daily_schedule[curr_index:curr_index+1] = (
                                         self._generate_task_decomp(act_desp, act_dura))
-            if curr_index_60 + 1 < len(self.persona.scratch.f_daily_schedule):
-                act_desp, act_dura = self.persona.scratch.f_daily_schedule[curr_index_60+1]
+            if curr_index_60 + 1 < len(self.scratch.f_daily_schedule):
+                act_desp, act_dura = self.scratch.f_daily_schedule[curr_index_60+1]
                 if act_dura >= 60: 
                     if determine_decomp(act_desp, act_dura): 
-                        self.persona.scratch.f_daily_schedule[curr_index_60+1:curr_index_60+2] = (
+                        self.scratch.f_daily_schedule[curr_index_60+1:curr_index_60+2] = (
                                             self._generate_task_decomp(act_desp, act_dura))
 
-        if curr_index_60 < len(self.persona.scratch.f_daily_schedule):
-            if self.persona.scratch.curr_time.hour < 23:
-                act_desp, act_dura = self.persona.scratch.f_daily_schedule[curr_index_60]
+        if curr_index_60 < len(self.scratch.f_daily_schedule):
+            if self.scratch.curr_time.hour < 23:
+                act_desp, act_dura = self.scratch.f_daily_schedule[curr_index_60]
                 if act_dura >= 60: 
                     if determine_decomp(act_desp, act_dura): 
-                        self.persona.scratch.f_daily_schedule[curr_index_60:curr_index_60+1] = (
+                        self.scratch.f_daily_schedule[curr_index_60:curr_index_60+1] = (
                                             self._generate_task_decomp(act_desp, act_dura))
 
         x_emergency = 0
-        for i in self.persona.scratch.f_daily_schedule: 
+        for i in self.scratch.f_daily_schedule: 
             x_emergency += i.duration
 
         if 1440 - x_emergency > 0: 
-            self.persona.scratch.f_daily_schedule += [Action(description="sleeping", duration=1440 - x_emergency)]
+            self.scratch.f_daily_schedule += [Action(description="sleeping", duration=1440 - x_emergency)]
         
-        act_desp, act_dura = self.persona.scratch.f_daily_schedule[curr_index] 
+        act_desp, act_dura = self.scratch.f_daily_schedule[curr_index] 
 
-        act_world = maze.access_tile(self.persona.scratch.curr_tile)["world"]
+        act_world = maze.access_tile(self.scratch.curr_tile)["world"]
         act_sector = self._generate_action_sector(act_desp, maze)
         act_arena = self._generate_action_arena(act_desp, maze, act_world, act_sector)
         act_address = f"{act_world}:{act_sector}:{act_arena}"
@@ -163,7 +165,7 @@ class LegacyPlanner(AbstractPlanner):
         act_obj_pron = self._generate_action_pronunciatio(act_obj_desp)
         act_obj_event = self._generate_act_obj_event_triple(act_game_object, act_obj_desp)
 
-        self.persona.scratch.add_new_action(new_address, 
+        self.scratch.add_new_action(new_address, 
                                         int(act_dura), 
                                         act_desp, 
                                         act_pron, 
@@ -180,14 +182,14 @@ class LegacyPlanner(AbstractPlanner):
         copy_retrieved = retrieved.copy()
         for event_desc, rel_ctx in copy_retrieved.items(): 
             curr_event = rel_ctx["curr_event"]
-            if curr_event.subject == self.persona.name: 
+            if curr_event.subject == self.scratch.name: 
                 del retrieved[event_desc]
 
         priority = []
         for event_desc, rel_ctx in retrieved.items(): 
             curr_event = rel_ctx["curr_event"]
             if (":" not in curr_event.subject 
-                and curr_event.subject != self.persona.name): 
+                and curr_event.subject != self.scratch.name): 
                 priority += [rel_ctx]
         if priority: 
             return random.choice(priority)
@@ -226,6 +228,9 @@ class LegacyPlanner(AbstractPlanner):
                 if init_persona.scratch.chatting_with_buffer[target_persona.name] > 0: 
                     return False
 
+            # NOTE: run_gpt_prompt_decide_to_talk expects a persona object.
+            # We pass init_persona which is self.persona (now self.scratch).
+            # self.scratch has a .scratch property that returns self, so it mimics persona.
             if run_gpt_prompt_decide_to_talk(init_persona, target_persona, retrieved)[0] == "yes": 
                 return True
 
@@ -266,17 +271,18 @@ class LegacyPlanner(AbstractPlanner):
             else:
                 return False 
 
-        if self.persona.scratch.chatting_with: 
+        if self.scratch.chatting_with: 
             return False
-        if "<waiting>" in self.persona.scratch.act_address: 
+        if "<waiting>" in self.scratch.act_address: 
             return False
 
         curr_event = retrieved["curr_event"]
 
         if ":" not in curr_event.subject: 
-            if lets_talk(self.persona, personas[curr_event.subject], retrieved):
+            # Pass self.scratch as init_persona
+            if lets_talk(self.scratch, personas[curr_event.subject], retrieved):
                 return f"chat with {curr_event.subject}"
-            react_mode = lets_react(self.persona, personas[curr_event.subject], retrieved)
+            react_mode = lets_react(self.scratch, personas[curr_event.subject], retrieved)
             return react_mode
         return False
 
@@ -285,20 +291,20 @@ class LegacyPlanner(AbstractPlanner):
                     chatting_end_time, 
                     act_pronunciatio, act_obj_description, act_obj_pronunciatio, 
                     act_obj_event, act_start_time=None): 
-        p = self.persona 
+        p = self.scratch # Use scratch as persona proxy
 
         min_sum = 0
-        for i in range (p.scratch.get_f_daily_schedule_hourly_org_index()): 
-            min_sum += p.scratch.f_daily_schedule_hourly_org[i].duration
+        for i in range (p.get_f_daily_schedule_hourly_org_index()): 
+            min_sum += p.f_daily_schedule_hourly_org[i].duration
         start_hour = int (min_sum/60)
 
-        if (p.scratch.f_daily_schedule_hourly_org[p.scratch.get_f_daily_schedule_hourly_org_index()].duration >= 120):
-            end_hour = start_hour + p.scratch.f_daily_schedule_hourly_org[p.scratch.get_f_daily_schedule_hourly_org_index()].duration/60
+        if (p.f_daily_schedule_hourly_org[p.get_f_daily_schedule_hourly_org_index()].duration >= 120):
+            end_hour = start_hour + p.f_daily_schedule_hourly_org[p.get_f_daily_schedule_hourly_org_index()].duration/60
 
-        elif (p.scratch.f_daily_schedule_hourly_org[p.scratch.get_f_daily_schedule_hourly_org_index()].duration + 
-            p.scratch.f_daily_schedule_hourly_org[p.scratch.get_f_daily_schedule_hourly_org_index()+1].duration): 
-            end_hour = start_hour + ((p.scratch.f_daily_schedule_hourly_org[p.scratch.get_f_daily_schedule_hourly_org_index()].duration + 
-                    p.scratch.f_daily_schedule_hourly_org[p.scratch.get_f_daily_schedule_hourly_org_index()+1].duration)/60)
+        elif (p.f_daily_schedule_hourly_org[p.get_f_daily_schedule_hourly_org_index()].duration + 
+            p.f_daily_schedule_hourly_org[p.get_f_daily_schedule_hourly_org_index()+1].duration): 
+            end_hour = start_hour + ((p.f_daily_schedule_hourly_org[p.get_f_daily_schedule_hourly_org_index()].duration + 
+                    p.f_daily_schedule_hourly_org[p.get_f_daily_schedule_hourly_org_index()+1].duration)/60)
 
         else: 
             end_hour = start_hour + 2
@@ -308,7 +314,7 @@ class LegacyPlanner(AbstractPlanner):
         count = 0 
         start_index = None
         end_index = None
-        for act in p.scratch.f_daily_schedule: 
+        for act in p.f_daily_schedule: 
             if dur_sum >= start_hour * 60 and start_index == None:
                 start_index = count
             if dur_sum >= end_hour * 60 and end_index == None: 
@@ -317,8 +323,8 @@ class LegacyPlanner(AbstractPlanner):
             count += 1
 
         ret = self._generate_new_decomp_schedule(inserted_act, inserted_act_dur, start_hour, end_hour)
-        p.scratch.f_daily_schedule[start_index:end_index] = ret
-        p.scratch.add_new_action(act_address,
+        p.f_daily_schedule[start_index:end_index] = ret
+        p.add_new_action(act_address,
                             inserted_act_dur,
                             inserted_act,
                             act_pronunciatio,
@@ -333,7 +339,7 @@ class LegacyPlanner(AbstractPlanner):
                             act_start_time)
 
     def _chat_react(self, maze, focused_event, reaction_mode, personas):
-        init_persona = self.persona
+        init_persona = self.scratch # Use scratch as persona proxy
         target_persona = personas[reaction_mode[9:].strip()]
 
         convo, duration_min = self._generate_convo(maze, init_persona, target_persona)
@@ -367,14 +373,14 @@ class LegacyPlanner(AbstractPlanner):
             act_obj_event, act_start_time)
 
     def _wait_react(self, reaction_mode): 
-        p = self.persona
+        p = self.scratch
 
-        inserted_act = f'waiting to start {p.scratch.act_description.split("(")[-1][:-1]}'
+        inserted_act = f'waiting to start {p.act_description.split("(")[-1][:-1]}'
         end_time = datetime.datetime.strptime(reaction_mode[6:].strip(), "%B %d, %Y, %H:%M:%S")
-        inserted_act_dur = (end_time.minute + end_time.hour * 60) - (p.scratch.curr_time.minute + p.scratch.curr_time.hour * 60) + 1
+        inserted_act_dur = (end_time.minute + end_time.hour * 60) - (p.curr_time.minute + p.curr_time.hour * 60) + 1
 
-        act_address = f"<waiting> {p.scratch.curr_tile[0]} {p.scratch.curr_tile[1]}"
-        act_event = (p.name, "waiting to start", p.scratch.act_description.split("(")[-1][:-1])
+        act_address = f"<waiting> {p.curr_tile[0]} {p.curr_tile[1]}"
+        act_event = (p.name, "waiting to start", p.act_description.split("(")[-1][:-1])
         chatting_with = None
         chat = None
         chatting_with_buffer = None
@@ -393,11 +399,11 @@ class LegacyPlanner(AbstractPlanner):
 
     def _generate_wake_up_hour(self):
         logging.debug("GNS FUNCTION: <generate_wake_up_hour>")
-        return int(run_gpt_prompt_wake_up_hour(self.persona)[0])
+        return int(run_gpt_prompt_wake_up_hour(self.scratch)[0])
 
     def _generate_first_daily_plan(self, wake_up_hour):
         logging.debug("GNS FUNCTION: <generate_first_daily_plan>")
-        return run_gpt_prompt_daily_plan(self.persona, wake_up_hour)[0]
+        return run_gpt_prompt_daily_plan(self.scratch, wake_up_hour)[0]
 
     def _generate_hourly_schedule(self, wake_up_hour):
         logging.debug("GNS FUNCTION: <generate_hourly_schedule>")
@@ -418,7 +424,7 @@ class LegacyPlanner(AbstractPlanner):
                         wake_up_hour -= 1
                     else: 
                         n_m1_activity += [run_gpt_prompt_generate_hourly_schedule(
-                                        self.persona, curr_hour_str, n_m1_activity, hour_str)[0]]
+                                        self.scratch, curr_hour_str, n_m1_activity, hour_str)[0]]
         
         _n_m1_hourly_compressed = []
         prev = None 
@@ -440,27 +446,27 @@ class LegacyPlanner(AbstractPlanner):
 
     def _generate_task_decomp(self, task, duration):
         logging.debug("GNS FUNCTION: <generate_task_decomp>")
-        ret = run_gpt_prompt_task_decomp(self.persona, task, duration)[0]
+        ret = run_gpt_prompt_task_decomp(self.scratch, task, duration)[0]
         return [Action(description=x[0], duration=x[1]) for x in ret]
 
     def _generate_action_sector(self, act_desp, maze):
         logging.debug("GNS FUNCTION: <generate_action_sector>")
-        return run_gpt_prompt_action_sector(act_desp, self.persona, maze)[0]
+        return run_gpt_prompt_action_sector(act_desp, self.scratch, maze)[0]
 
     def _generate_action_arena(self, act_desp, maze, act_world, act_sector):
         logging.debug("GNS FUNCTION: <generate_action_arena>")
-        return run_gpt_prompt_action_arena(act_desp, self.persona, maze, act_world, act_sector)[0]
+        return run_gpt_prompt_action_arena(act_desp, self.scratch, maze, act_world, act_sector)[0]
 
     def _generate_action_game_object(self, act_desp, act_address, maze):
         logging.debug("GNS FUNCTION: <generate_action_game_object>")
-        if not self.persona.s_mem.get_str_accessible_arena_game_objects(act_address): 
+        if not self.scratch.s_mem.get_str_accessible_arena_game_objects(act_address): 
             return "<random>"
-        return run_gpt_prompt_action_game_object(act_desp, self.persona, maze, act_address)[0]
+        return run_gpt_prompt_action_game_object(act_desp, self.scratch, maze, act_address)[0]
 
     def _generate_action_pronunciatio(self, act_desp):
         logging.debug("GNS FUNCTION: <generate_action_pronunciatio>")
         try: 
-            x = run_gpt_prompt_pronunciatio(act_desp, self.persona)[0]
+            x = run_gpt_prompt_pronunciatio(act_desp, self.scratch)[0]
         except: 
             x = "🙂"
         if not x: return "🙂"
@@ -468,20 +474,20 @@ class LegacyPlanner(AbstractPlanner):
 
     def _generate_action_event_triple(self, act_desp):
         logging.debug("GNS FUNCTION: <generate_action_event_triple>")
-        return run_gpt_prompt_event_triple(act_desp, self.persona)[0]
+        return run_gpt_prompt_event_triple(act_desp, self.scratch)[0]
 
     def _generate_act_obj_desc(self, act_game_object, act_desp):
         logging.debug("GNS FUNCTION: <generate_act_obj_desc>")
-        return run_gpt_prompt_act_obj_desc(act_game_object, act_desp, self.persona)[0]
+        return run_gpt_prompt_act_obj_desc(act_game_object, act_desp, self.scratch)[0]
 
     def _generate_act_obj_event_triple(self, act_game_object, act_obj_desc):
         logging.debug("GNS FUNCTION: <generate_act_obj_event_triple>")
-        return run_gpt_prompt_act_obj_event_triple(act_game_object, act_obj_desc, self.persona)[0]
+        return run_gpt_prompt_act_obj_event_triple(act_game_object, act_obj_desc, self.scratch)[0]
 
     def _generate_convo(self, maze, init_persona, target_persona):
         # convo = agent_chat_v1(maze, init_persona, target_persona)
         # convo = agent_chat_v2(maze, init_persona, target_persona)
-        convo = init_persona.converser.chat(maze, target_persona)
+        convo = self.converser.chat(maze, target_persona)
         all_utt = ""
         for row in convo: 
             speaker = row[0]
@@ -492,12 +498,12 @@ class LegacyPlanner(AbstractPlanner):
         return convo, convo_length
 
     def _generate_convo_summary(self, convo):
-        return run_gpt_prompt_summarize_conversation(self.persona, convo)[0]
+        return run_gpt_prompt_summarize_conversation(self.scratch, convo)[0]
 
     def _generate_new_decomp_schedule(self, inserted_act, inserted_act_dur, start_hour, end_hour):
-        p = self.persona
-        today_min_pass = (int(p.scratch.curr_time.hour) * 60 
-                        + int(p.scratch.curr_time.minute) + 1)
+        p = self.scratch
+        today_min_pass = (int(p.curr_time.hour) * 60 
+                        + int(p.curr_time.minute) + 1)
         
         main_act_dur = []
         truncated_act_dur = []
@@ -505,13 +511,13 @@ class LegacyPlanner(AbstractPlanner):
         count = 0 
         truncated_fin = False 
 
-        for act in p.scratch.f_daily_schedule: 
+        for act in p.f_daily_schedule: 
             if (dur_sum >= start_hour * 60) and (dur_sum < end_hour * 60): 
                 main_act_dur += [[act.description, act.duration]]
                 if dur_sum <= today_min_pass:
                     truncated_act_dur += [[act.description, act.duration]]
                 elif dur_sum > today_min_pass and not truncated_fin: 
-                    truncated_act_dur += [[p.scratch.f_daily_schedule[count].description, 
+                    truncated_act_dur += [[p.f_daily_schedule[count].description, 
                                         dur_sum - today_min_pass]] 
                     truncated_act_dur[-1][-1] -= (dur_sum - today_min_pass) 
                     truncated_fin = True
@@ -531,7 +537,7 @@ class LegacyPlanner(AbstractPlanner):
                         + datetime.timedelta(hours=end_hour))
 
         logging.debug("GNS FUNCTION: <generate_new_decomp_schedule>")
-        ret = run_gpt_prompt_new_decomp_schedule(self.persona, 
+        ret = run_gpt_prompt_new_decomp_schedule(self.scratch, 
                                                 main_act_dur, 
                                                 truncated_act_dur, 
                                                 start_time_hour,
@@ -541,19 +547,11 @@ class LegacyPlanner(AbstractPlanner):
         return [Action(description=x[0], duration=x[1]) for x in ret]
 
     def _revise_identity(self):
-        p_name = self.persona.scratch.name
-        focal_points = [f"{p_name}'s plan for {self.persona.scratch.get_str_curr_date_str()}.",
+        p_name = self.scratch.name
+        focal_points = [f"{p_name}'s plan for {self.scratch.get_str_curr_date_str()}.",
                         f"Important recent events for {p_name}'s life."]
         
-        # We need to use the retriever here!
-        # But wait, the original code called `new_retrieve` from `retrieve.py`.
-        # Now that logic is in `LegacyRetriever`.
-        # We should use `self.persona.retriever.retrieve_weighted` if available, 
-        # or we need to duplicate that logic if we can't access it yet.
-        # Ideally, Persona has a retriever.
-        
-        # Assuming Persona has been updated to have a retriever:
-        retrieved = self.persona.retriever.retrieve_weighted(focal_points)
+        retrieved = self.retriever.retrieve_weighted(focal_points)
 
         statements = "[Statements]\n"
         for key, val in retrieved.items():
@@ -562,7 +560,7 @@ class LegacyPlanner(AbstractPlanner):
 
         plan_prompt = statements + "\n"
         plan_prompt += f"Given the statements above, is there anything that {p_name} should remember as they plan for"
-        plan_prompt += f" *{self.persona.scratch.curr_time.strftime('%A %B %d')}*? "
+        plan_prompt += f" *{self.scratch.curr_time.strftime('%A %B %d')}*? "
         plan_prompt += f"If there is any scheduling information, be as specific as possible (include date, time, and location if stated in the statement)\n\n"
         plan_prompt += f"Write the response from {p_name}'s perspective."
         plan_note = ChatGPT_single_request(plan_prompt)
@@ -572,22 +570,22 @@ class LegacyPlanner(AbstractPlanner):
         thought_prompt += f"Write the response from {p_name}'s perspective."
         thought_note = ChatGPT_single_request(thought_prompt)
 
-        currently_prompt = f"{p_name}'s status from {(self.persona.scratch.curr_time - datetime.timedelta(days=1)).strftime('%A %B %d')}:\n"
-        currently_prompt += f"{self.persona.scratch.currently}\n\n"
-        currently_prompt += f"{p_name}'s thoughts at the end of {(self.persona.scratch.curr_time - datetime.timedelta(days=1)).strftime('%A %B %d')}:\n" 
+        currently_prompt = f"{p_name}'s status from {(self.scratch.curr_time - datetime.timedelta(days=1)).strftime('%A %B %d')}:\n"
+        currently_prompt += f"{self.scratch.currently}\n\n"
+        currently_prompt += f"{p_name}'s thoughts at the end of {(self.scratch.curr_time - datetime.timedelta(days=1)).strftime('%A %B %d')}:\n" 
         currently_prompt += (plan_note + thought_note).replace('\n', '') + "\n\n"
-        currently_prompt += f"It is now {self.persona.scratch.curr_time.strftime('%A %B %d')}. Given the above, write {p_name}'s status for {self.persona.scratch.curr_time.strftime('%A %B %d')} that reflects {p_name}'s thoughts at the end of {(self.persona.scratch.curr_time - datetime.timedelta(days=1)).strftime('%A %B %d')}. Write this in third-person talking about {p_name}."
+        currently_prompt += f"It is now {self.scratch.curr_time.strftime('%A %B %d')}. Given the above, write {p_name}'s status for {self.scratch.curr_time.strftime('%A %B %d')} that reflects {p_name}'s thoughts at the end of {(self.scratch.curr_time - datetime.timedelta(days=1)).strftime('%A %B %d')}. Write this in third-person talking about {p_name}."
         currently_prompt += f"If there is any scheduling information, be as specific as possible (include date, time, and location if stated in the statement).\n\n"
         currently_prompt += "Follow this format below:\nStatus: <new status>"
         
         new_currently = ChatGPT_single_request(currently_prompt)
-        self.persona.scratch.currently = new_currently
+        self.scratch.currently = new_currently
 
-        daily_req_prompt = self.persona.scratch.get_str_iss() + "\n"
-        daily_req_prompt += f"Today is {self.persona.scratch.curr_time.strftime('%A %B %d')}. Here is {self.persona.scratch.name}'s plan today in broad-strokes (with the time of the day. e.g., have a lunch at 12:00 pm, watch TV from 7 to 8 pm).\n\n"
+        daily_req_prompt = self.scratch.get_str_iss() + "\n"
+        daily_req_prompt += f"Today is {self.scratch.curr_time.strftime('%A %B %d')}. Here is {self.scratch.name}'s plan today in broad-strokes (with the time of the day. e.g., have a lunch at 12:00 pm, watch TV from 7 to 8 pm).\n\n"
         daily_req_prompt += f"Follow this format (the list should have 4~6 items but no more):\n"
         daily_req_prompt += f"1. wake up and complete the morning routine at <time>, 2. ..."
 
         new_daily_req = ChatGPT_single_request(daily_req_prompt)
         new_daily_req = new_daily_req.replace('\n', ' ')
-        self.persona.scratch.daily_plan_req = new_daily_req
+        self.scratch.daily_plan_req = new_daily_req

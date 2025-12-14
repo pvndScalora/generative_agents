@@ -87,13 +87,15 @@ class Persona:
     # COGNITIVE MODULES
     perceiver = LegacyPerceiver(scratch)
     retriever = LegacyRetriever(scratch)
-    planner = LegacyPlanner(scratch)
+    converser = LegacyConverser(scratch, retriever)
+    planner = LegacyPlanner(scratch, retriever, converser)
     executor = LegacyExecutor(scratch)
     reflector = LegacyReflector(scratch)
-    converser = LegacyConverser(scratch)
 
-    return cls(name, repository, scratch, s_mem, a_mem,
+    persona = cls(name, repository, scratch, s_mem, a_mem,
                perceiver, retriever, planner, executor, reflector, converser)
+    
+    return persona
 
 
   def save(self, save_folder: str): 

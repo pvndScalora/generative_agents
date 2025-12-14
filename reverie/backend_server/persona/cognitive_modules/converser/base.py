@@ -6,6 +6,9 @@ if TYPE_CHECKING:
     from persona.persona import Persona
 
 class AbstractConverser(ABC):
+    """
+    responsible for managing conversational interactions for a persona.
+    """
     @abstractmethod
     def open_session(self, convo_mode: str):
         pass
