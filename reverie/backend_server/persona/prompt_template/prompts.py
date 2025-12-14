@@ -31,9 +31,6 @@ class BasePrompt:
   def __init__(self, persona, verbose=False):
     self.persona = persona
     self.verbose = verbose
-    self.gpt_param = {"engine": "gpt-3.5-turbo-instruct", "max_tokens": 50, 
-                      "temperature": 0.0, "top_p": 1, "stream": False,
-                      "frequency_penalty": 0, "presence_penalty": 0, "stop": ["\n"]}
     self.prompt_template = ""
     self.example_output = None
     self.special_instruction = None
@@ -52,48 +49,24 @@ class BasePrompt:
     """
     raise NotImplementedError
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     """
     Validates the GPT response.
     Returns True if valid, False otherwise.
     """
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except: 
       return False
 
-  def clean_up(self, gpt_response, prompt=""):
+  def clean_up(self, llm_response, prompt=""):
     """
     Cleans up and parses the GPT response.
     Must be implemented by subclasses.
     """
-    return gpt_response
+    return llm_response
 
-  def run(self, test_input=None):
-    """
-    Executes the prompt workflow:
-    1. Create prompt input
-    2. Generate prompt string
-    3. Call safe_generate_response
-    4. Return result
-    """
-    prompt_input = self.create_prompt_input(test_input)
-    prompt = generate_prompt(prompt_input, self.prompt_template)
-    fail_safe = self.get_fail_safe()
-
-    if self.example_output is not None and self.special_instruction is not None:
-      output = ChatGPT_safe_generate_response(prompt, self.example_output, self.special_instruction, 3, fail_safe,
-                                              self.validate, self.clean_up, True)
-    else:
-      output = safe_generate_response(prompt, self.gpt_param, 5, fail_safe,
-                                       self.validate, self.clean_up)
-    
-    if DEBUG or self.verbose: 
-      print_run_prompts(self.prompt_template, self.persona, self.gpt_param, 
-                        prompt_input, prompt, output)
-      
-    return output, [output, prompt, self.gpt_param, prompt_input, fail_safe]
 
 
 class WakeUpHourPrompt(BasePrompt):
@@ -103,8 +76,6 @@ class WakeUpHourPrompt(BasePrompt):
   def __init__(self, persona, verbose=False):
     super().__init__(persona, verbose)
     self.prompt_template = "persona/prompt_template/v2/wake_up_hour_v1.txt"
-    self.gpt_param["max_tokens"] = 5
-    self.gpt_param["temperature"] = 0.8
 
   def create_prompt_input(self, test_input=None):
     if test_input: return test_input
@@ -113,8 +84,8 @@ class WakeUpHourPrompt(BasePrompt):
                     self.persona.scratch.get_str_firstname()]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cr = int(gpt_response.strip().lower().split("am")[0])
+  def clean_up(self, llm_response, prompt=""):
+    cr = int(llm_response.strip().lower().split("am")[0])
     return cr
 
   def get_fail_safe(self):
@@ -125,9 +96,6 @@ class DailyPlanPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.wake_up_hour = wake_up_hour
     self.prompt_template = "persona/prompt_template/v2/daily_planning_v6.txt"
-    self.gpt_param["max_tokens"] = 500
-    self.gpt_param["temperature"] = 1
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     if test_input: return test_input
@@ -139,15 +107,15 @@ class DailyPlanPrompt(BasePrompt):
     prompt_input += [f"{str(self.wake_up_hour)}:00 am"]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
+  def clean_up(self, llm_response, prompt=""):
     cr = []
-    _cr = gpt_response.split(")")
+    _cr = llm_response.split(")")
     for i in _cr: 
       if i[-1].isdigit(): 
         i = i[:-1].strip()
         if i[-1] == "." or i[-1] == ",": 
           cr += [i[:-1].strip()]
-    return cr
+    return ([f"wake up and complete the morning routine at {self.wake_up_hour}:00 am"] + cr)
 
   def get_fail_safe(self):
     fs = ['wake up and complete the morning routine at 6:00 am', 
@@ -158,11 +126,6 @@ class DailyPlanPrompt(BasePrompt):
           'relax and watch TV from 7:00 pm to 8:00 pm', 
           'go to bed at 11:00 pm'] 
     return fs
-  
-  def run(self, test_input=None):
-    output, debug_data = super().run(test_input)
-    output = ([f"wake up and complete the morning routine at {self.wake_up_hour}:00 am"] + output)
-    return output, debug_data
 
 class HourlySchedulePrompt(BasePrompt):
   def __init__(self, persona, curr_hour_str, p_f_ds_hourly_org, hour_str, intermission2=None, verbose=False):
@@ -172,9 +135,6 @@ class HourlySchedulePrompt(BasePrompt):
     self.hour_str = hour_str
     self.intermission2 = intermission2
     self.prompt_template = "persona/prompt_template/v2/generate_hourly_schedule_v2.txt"
-    self.gpt_param["max_tokens"] = 50
-    self.gpt_param["temperature"] = 0.5
-    self.gpt_param["stop"] = ["\n"]
 
   def create_prompt_input(self, test_input=None):
     if test_input: return test_input
@@ -222,8 +182,8 @@ class HourlySchedulePrompt(BasePrompt):
 
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cr = gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    cr = llm_response.strip()
     if cr[-1] == ".":
       cr = cr[:-1]
     return cr
@@ -237,8 +197,6 @@ class TaskDecompPrompt(BasePrompt):
     self.task = task
     self.duration = duration
     self.prompt_template = "persona/prompt_template/v2/task_decomp_v3.txt"
-    self.gpt_param["max_tokens"] = 1000
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     curr_f_org_index = self.persona.scratch.get_f_daily_schedule_hourly_org_index()
@@ -281,8 +239,8 @@ class TaskDecompPrompt(BasePrompt):
     prompt_input += [self.persona.scratch.get_str_firstname()]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    temp = [i.strip() for i in gpt_response.split("\n")]
+  def clean_up(self, llm_response, prompt=""):
+    temp = [i.strip() for i in llm_response.split("\n")]
     _cr = []
     cr = []
     for count, i in enumerate(temp): 
@@ -329,14 +287,7 @@ class TaskDecompPrompt(BasePrompt):
         cr_ret[-1][1] += 1
     cr = cr_ret[1:]
 
-    return cr
-
-  def get_fail_safe(self):
-    return ["asleep"]
-
-  def run(self, test_input=None):
-    output, debug_data = super().run(test_input)
-    
+    output = cr
     fin_output = []
     time_sum = 0
     for i_task, i_duration in output: 
@@ -349,7 +300,8 @@ class TaskDecompPrompt(BasePrompt):
     for fi_task, fi_duration in fin_output: 
       ftime_sum += fi_duration
     
-    fin_output[-1][1] += (self.duration - ftime_sum)
+    if fin_output:
+        fin_output[-1][1] += (self.duration - ftime_sum)
     output = fin_output 
 
     task_decomp = output
@@ -357,10 +309,11 @@ class TaskDecompPrompt(BasePrompt):
     for decomp_task, duration in task_decomp: 
       ret += [[f"{self.task} ({decomp_task})", duration]]
     output = ret
-    
-    # Update debug data with new output
-    debug_data[0] = output
-    return output, debug_data
+
+    return output
+
+  def get_fail_safe(self):
+    return ["asleep"]
 
 class ActionSectorPrompt(BasePrompt):
   def __init__(self, persona, maze, action_description, verbose=False):
@@ -368,8 +321,6 @@ class ActionSectorPrompt(BasePrompt):
     self.maze = maze
     self.action_description = action_description
     self.prompt_template = "persona/prompt_template/v1/action_location_sector_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     act_world = f"{self.maze.access_tile(self.persona.scratch.curr_tile)['world']}"
@@ -417,29 +368,25 @@ class ActionSectorPrompt(BasePrompt):
     prompt_input += [self.persona.scratch.get_str_name()]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cleaned_response = gpt_response.split("}")[0]
+  def clean_up(self, llm_response, prompt=""):
+    cleaned_response = llm_response.split("}")[0]
+    y = f"{self.maze.access_tile(self.persona.scratch.curr_tile)['world']}"
+    x = [i.strip() for i in self.persona.s_mem.get_str_accessible_sectors(y).split(",")]
+    if cleaned_response not in x: 
+      cleaned_response = self.persona.scratch.living_area.split(":")[1]
     return cleaned_response
 
-  def validate(self, gpt_response, prompt=""):
-    if len(gpt_response.strip()) < 1: 
+  def validate(self, llm_response, prompt=""):
+    if len(llm_response.strip()) < 1: 
       return False
-    if "}" not in gpt_response:
+    if "}" not in llm_response:
       return False
-    if "," in gpt_response: 
+    if "," in llm_response: 
       return False
     return True
 
   def get_fail_safe(self):
     return "kitchen"
-  
-  def run(self, test_input=None):
-    output, debug_data = super().run(test_input)
-    y = f"{self.maze.access_tile(self.persona.scratch.curr_tile)['world']}"
-    x = [i.strip() for i in self.persona.s_mem.get_str_accessible_sectors(y).split(",")]
-    if output not in x: 
-      output = self.persona.scratch.living_area.split(":")[1]
-    return output, debug_data
 
 class ActionArenaPrompt(BasePrompt):
   def __init__(self, persona, maze, act_world, act_sector, action_description, verbose=False):
@@ -449,8 +396,6 @@ class ActionArenaPrompt(BasePrompt):
     self.act_sector = act_sector
     self.action_description = action_description
     self.prompt_template = "persona/prompt_template/v1/action_location_object_vMar11.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = []
@@ -486,16 +431,16 @@ class ActionArenaPrompt(BasePrompt):
     
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cleaned_response = gpt_response.split("}")[0]
+  def clean_up(self, llm_response, prompt=""):
+    cleaned_response = llm_response.split("}")[0]
     return cleaned_response
 
-  def validate(self, gpt_response, prompt=""):
-    if len(gpt_response.strip()) < 1: 
+  def validate(self, llm_response, prompt=""):
+    if len(llm_response.strip()) < 1: 
       return False
-    if "}" not in gpt_response:
+    if "}" not in llm_response:
       return False
-    if "," in gpt_response: 
+    if "," in llm_response: 
       return False
     return True
 
@@ -509,8 +454,6 @@ class ActionGameObjectPrompt(BasePrompt):
     self.temp_address = temp_address
     self.action_description = action_description
     self.prompt_template = "persona/prompt_template/v1/action_object_v2.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = []
@@ -523,32 +466,26 @@ class ActionGameObjectPrompt(BasePrompt):
                      .s_mem.get_str_accessible_arena_game_objects(self.temp_address)]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cleaned_response = gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    cleaned_response = llm_response.strip()
+    x = [i.strip() for i in self.persona.s_mem.get_str_accessible_arena_game_objects(self.temp_address).split(",")]
+    if cleaned_response not in x: 
+      cleaned_response = random.choice(x)
     return cleaned_response
 
-  def validate(self, gpt_response, prompt=""):
-    if len(gpt_response.strip()) < 1: 
+  def validate(self, llm_response, prompt=""):
+    if len(llm_response.strip()) < 1: 
       return False
     return True
 
   def get_fail_safe(self):
     return "bed"
 
-  def run(self, test_input=None):
-    output, debug_data = super().run(test_input)
-    x = [i.strip() for i in self.persona.s_mem.get_str_accessible_arena_game_objects(self.temp_address).split(",")]
-    if output not in x: 
-      output = random.choice(x)
-    return output, debug_data
-
 class PronunciatioPrompt(BasePrompt):
   def __init__(self, persona, action_description, verbose=False):
     super().__init__(persona, verbose)
     self.action_description = action_description
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/generate_pronunciatio_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     action_description = self.action_description
@@ -557,16 +494,16 @@ class PronunciatioPrompt(BasePrompt):
     prompt_input = [action_description]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cr = gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    cr = llm_response.strip()
     if len(cr) > 3:
       cr = cr[:3]
     return cr
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt="")
-      if len(gpt_response) == 0: 
+      self.clean_up(llm_response, prompt="")
+      if len(llm_response) == 0: 
         return False
     except: return False
     return True 
@@ -579,8 +516,6 @@ class EventTriplePrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.action_description = action_description
     self.prompt_template = "persona/prompt_template/v2/generate_event_triple_v1.txt"
-    self.gpt_param["max_tokens"] = 30
-    self.gpt_param["stop"] = ["\n"]
 
   def create_prompt_input(self, test_input=None):
     action_description = self.action_description
@@ -591,15 +526,15 @@ class EventTriplePrompt(BasePrompt):
                     self.persona.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cr = gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    cr = llm_response.strip()
     cr = [i.strip() for i in cr.split(")")[0].split(",")]
-    return cr
+    return (self.persona.name, cr[0], cr[1])
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      gpt_response = self.clean_up(gpt_response, prompt="")
-      if len(gpt_response) != 2: 
+      llm_response = self.clean_up(llm_response, prompt="")
+      if len(llm_response) != 2: 
         return False
     except: return False
     return True 
@@ -607,19 +542,12 @@ class EventTriplePrompt(BasePrompt):
   def get_fail_safe(self):
     return (self.persona.name, "is", "idle")
 
-  def run(self, test_input=None):
-    output, debug_data = super().run(test_input)
-    output = (self.persona.name, output[0], output[1])
-    return output, debug_data
-
 class ActObjDescPrompt(BasePrompt):
   def __init__(self, persona, act_game_object, act_desp, verbose=False):
     super().__init__(persona, verbose)
     self.act_game_object = act_game_object
     self.act_desp = act_desp
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/generate_obj_event_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = "being fixed"
     self.special_instruction = "The output should ONLY contain the phrase that should go in <fill in>."
 
@@ -631,14 +559,14 @@ class ActObjDescPrompt(BasePrompt):
                     self.act_game_object]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cr = gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    cr = llm_response.strip()
     if cr[-1] == ".": cr = cr[:-1]
     return cr
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt="")
+      self.clean_up(llm_response, prompt="")
     except: 
       return False
     return True 
@@ -652,8 +580,6 @@ class ActObjEventTriplePrompt(BasePrompt):
     self.act_game_object = act_game_object
     self.act_obj_desc = act_obj_desc
     self.prompt_template = "persona/prompt_template/v2/generate_event_triple_v1.txt"
-    self.gpt_param["max_tokens"] = 30
-    self.gpt_param["stop"] = ["\n"]
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.act_game_object, 
@@ -661,26 +587,21 @@ class ActObjEventTriplePrompt(BasePrompt):
                     self.act_game_object]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    cr = gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    cr = llm_response.strip()
     cr = [i.strip() for i in cr.split(")")[0].split(",")]
-    return cr
+    return (self.act_game_object, cr[0], cr[1])
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      gpt_response = self.clean_up(gpt_response, prompt="")
-      if len(gpt_response) != 2: 
+      llm_response = self.clean_up(llm_response, prompt="")
+      if len(llm_response) != 2: 
         return False
     except: return False
     return True 
 
   def get_fail_safe(self):
     return (self.act_game_object, "is", "idle")
-
-  def run(self, test_input=None):
-    output, debug_data = super().run(test_input)
-    output = (self.act_game_object, output[0], output[1])
-    return output, debug_data
 
 class NewDecompSchedulePrompt(BasePrompt):
   def __init__(self, persona, main_act_dur, truncated_act_dur, start_time_hour, end_time_hour, inserted_act, inserted_act_dur, verbose=False):
@@ -692,8 +613,6 @@ class NewDecompSchedulePrompt(BasePrompt):
     self.inserted_act = inserted_act
     self.inserted_act_dur = inserted_act_dur
     self.prompt_template = "persona/prompt_template/v2/new_decomp_schedule_v1.txt"
-    self.gpt_param["max_tokens"] = 1000
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     persona_name = self.persona.name
@@ -731,8 +650,8 @@ class NewDecompSchedulePrompt(BasePrompt):
                     new_plan_init]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    new_schedule = prompt + " " + gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    new_schedule = prompt + " " + llm_response.strip()
     new_schedule = new_schedule.split("The revised schedule:")[-1].strip()
     new_schedule = new_schedule.split("\n")
 
@@ -751,11 +670,11 @@ class NewDecompSchedulePrompt(BasePrompt):
 
     return ret
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      gpt_response = self.clean_up(gpt_response, prompt)
+      llm_response = self.clean_up(llm_response, prompt)
       dur_sum = 0
-      for act, dur in gpt_response: 
+      for act, dur in llm_response: 
         dur_sum += dur
         if str(type(act)) != "<class 'str'>":
           return False 
@@ -804,8 +723,6 @@ class DecideToTalkPrompt(BasePrompt):
     self.target_persona = target_persona
     self.retrieved = retrieved
     self.prompt_template = "persona/prompt_template/v2/decide_to_talk_v2.txt"
-    self.gpt_param["max_tokens"] = 20
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     last_chat = self.persona.a_mem.get_last_chat(self.target_persona.name)
@@ -866,12 +783,12 @@ class DecideToTalkPrompt(BasePrompt):
     prompt_input += [self.target_persona.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split("Answer in yes or no:")[-1].strip().lower()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split("Answer in yes or no:")[-1].strip().lower()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      if gpt_response.split("Answer in yes or no:")[-1].strip().lower() in ["yes", "no"]: 
+      if llm_response.split("Answer in yes or no:")[-1].strip().lower() in ["yes", "no"]: 
         return True
       return False     
     except:
@@ -886,8 +803,6 @@ class DecideToReactPrompt(BasePrompt):
     self.target_persona = target_persona
     self.retrieved = retrieved
     self.prompt_template = "persona/prompt_template/v2/decide_to_react_v1.txt"
-    self.gpt_param["max_tokens"] = 20
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     context = ""
@@ -943,12 +858,12 @@ class DecideToReactPrompt(BasePrompt):
     prompt_input += [init_act_desc]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split("Answer: Option")[-1].strip().lower()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split("Answer: Option")[-1].strip().lower()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      if gpt_response.split("Answer: Option")[-1].strip().lower() in ["1", "2", "3"]: 
+      if llm_response.split("Answer: Option")[-1].strip().lower() in ["1", "2", "3"]: 
         return True
       return False     
     except:
@@ -963,9 +878,6 @@ class CreateConversationPrompt(BasePrompt):
     self.target_persona = target_persona
     self.curr_loc = curr_loc
     self.prompt_template = "persona/prompt_template/v2/create_conversation_v2.txt"
-    self.gpt_param["max_tokens"] = 1000
-    self.gpt_param["temperature"] = 0.7
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prev_convo_insert = "\n"
@@ -994,12 +906,12 @@ class CreateConversationPrompt(BasePrompt):
                     self.target_persona.scratch.get_str_name()]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = (prompt + gpt_response).split("Here is their conversation.")[-1].strip()
-    content = re.findall('"([^"]*)"', gpt_response)
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = (prompt + llm_response).split("Here is their conversation.")[-1].strip()
+    content = re.findall('"([^"]*)"', llm_response)
 
     speaker_order = []
-    for i in gpt_response.split("\n"): 
+    for i in llm_response.split("\n"): 
       name = i.split(":")[0].strip() 
       if name: 
         speaker_order += [name]
@@ -1010,9 +922,9 @@ class CreateConversationPrompt(BasePrompt):
 
     return ret
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1025,8 +937,6 @@ class SummarizeConversationPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.conversation = conversation
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/summarize_conversation_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = "conversing about what to eat for lunch"
     self.special_instruction = "The output must continue the sentence above by filling in the <fill in> tag. Don't start with 'this is a conversation about...' Just finish the sentence but do not miss any important details (including who are chatting)."
 
@@ -1038,13 +948,13 @@ class SummarizeConversationPrompt(BasePrompt):
     prompt_input = [convo_str]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    ret = "conversing about " + gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    ret = "conversing about " + llm_response.strip()
     return ret
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1057,8 +967,6 @@ class ExtractKeywordsPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.description = description
     self.prompt_template = "persona/prompt_template/v2/get_keywords_v1.txt"
-    self.gpt_param["max_tokens"] = 50
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     description = self.description
@@ -1067,10 +975,10 @@ class ExtractKeywordsPrompt(BasePrompt):
     prompt_input = [description]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = gpt_response.strip().split("Emotive keywords:")
-    factual = [i.strip() for i in gpt_response[0].split(",")]
-    emotive = [i.strip() for i in gpt_response[1].split(",")]
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = llm_response.strip().split("Emotive keywords:")
+    factual = [i.strip() for i in llm_response[0].split(",")]
+    emotive = [i.strip() for i in llm_response[1].split(",")]
     all_keywords = factual + emotive
     ret = []
     for i in all_keywords: 
@@ -1081,9 +989,9 @@ class ExtractKeywordsPrompt(BasePrompt):
         ret += [i]
     return set(ret)
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1097,21 +1005,18 @@ class KeywordToThoughtsPrompt(BasePrompt):
     self.keyword = keyword
     self.concept_summary = concept_summary
     self.prompt_template = "persona/prompt_template/v2/keyword_to_thoughts_v1.txt"
-    self.gpt_param["max_tokens"] = 40
-    self.gpt_param["temperature"] = 0.7
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.keyword, self.concept_summary, self.persona.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = gpt_response.strip()
-    return gpt_response
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = llm_response.strip()
+    return llm_response
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1127,9 +1032,6 @@ class ConvoToThoughtsPrompt(BasePrompt):
     self.convo_str = convo_str
     self.fin_target = fin_target
     self.prompt_template = "persona/prompt_template/v2/convo_to_thoughts_v1.txt"
-    self.gpt_param["max_tokens"] = 40
-    self.gpt_param["temperature"] = 0.7
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.init_persona_name,
@@ -1139,13 +1041,13 @@ class ConvoToThoughtsPrompt(BasePrompt):
                     self.fin_target]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = gpt_response.strip()
-    return gpt_response
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = llm_response.strip()
+    return llm_response
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1158,8 +1060,6 @@ class EventPoignancyPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.event_description = event_description
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/poignancy_event_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = "5"
     self.special_instruction = "The output should ONLY contain ONE integer value on the scale of 1 to 10."
 
@@ -1170,13 +1070,13 @@ class EventPoignancyPrompt(BasePrompt):
                     self.event_description]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = int(gpt_response.strip())
-    return gpt_response
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = int(llm_response.strip())
+    return llm_response
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1189,8 +1089,6 @@ class ThoughtPoignancyPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.event_description = event_description
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/poignancy_thought_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = "5"
     self.special_instruction = "The output should ONLY contain ONE integer value on the scale of 1 to 10."
 
@@ -1201,13 +1099,13 @@ class ThoughtPoignancyPrompt(BasePrompt):
                     self.event_description]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = int(gpt_response.strip())
-    return gpt_response
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = int(llm_response.strip())
+    return llm_response
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1220,8 +1118,6 @@ class ChatPoignancyPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.event_description = event_description
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/poignancy_chat_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = "5"
     self.special_instruction = "The output should ONLY contain ONE integer value on the scale of 1 to 10."
 
@@ -1232,13 +1128,13 @@ class ChatPoignancyPrompt(BasePrompt):
                     self.event_description]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = int(gpt_response.strip())
-    return gpt_response
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = int(llm_response.strip())
+    return llm_response
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1252,8 +1148,6 @@ class FocalPtPrompt(BasePrompt):
     self.statements = statements
     self.n = n
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/generate_focal_pt_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = '["What should Jane do for lunch", "Does Jane like strawberry", "Who is Jane"]'
     self.special_instruction = "Output must be a list of str."
 
@@ -1261,13 +1155,13 @@ class FocalPtPrompt(BasePrompt):
     prompt_input = [self.statements, str(self.n)]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    ret = ast.literal_eval(gpt_response)
+  def clean_up(self, llm_response, prompt=""):
+    ret = ast.literal_eval(llm_response)
     return ret
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1281,18 +1175,15 @@ class InsightAndGuidancePrompt(BasePrompt):
     self.statements = statements
     self.n = n
     self.prompt_template = "persona/prompt_template/v2/insight_and_evidence_v1.txt"
-    self.gpt_param["max_tokens"] = 150
-    self.gpt_param["temperature"] = 0.5
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.statements, str(self.n)]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = "1. " + gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = "1. " + llm_response.strip()
     ret = dict()
-    for i in gpt_response.split("\n"): 
+    for i in llm_response.split("\n"): 
       row = i.split(". ")[-1]
       thought = row.split("(because of ")[0].strip()
       evi_raw = row.split("(because of ")[1].split(")")[0].strip()
@@ -1301,9 +1192,9 @@ class InsightAndGuidancePrompt(BasePrompt):
       ret[thought] = evi_raw
     return ret
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1318,8 +1209,6 @@ class AgentChatSummarizeIdeasPrompt(BasePrompt):
     self.statements = statements
     self.curr_context = curr_context
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/summarize_chat_ideas_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = 'Jane Doe is working on a project'
     self.special_instruction = 'The output should be a string that responds to the question.'
 
@@ -1328,12 +1217,12 @@ class AgentChatSummarizeIdeasPrompt(BasePrompt):
                     self.statements, self.persona.scratch.name, self.target_persona.scratch.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split('"')[0].strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split('"')[0].strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1347,8 +1236,6 @@ class AgentChatSummarizeRelationshipPrompt(BasePrompt):
     self.target_persona = target_persona
     self.statements = statements
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/summarize_chat_relationship_v2.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = 'Jane Doe is working on a project'
     self.special_instruction = 'The output should be a string that responds to the question.'
 
@@ -1356,12 +1243,12 @@ class AgentChatSummarizeRelationshipPrompt(BasePrompt):
     prompt_input = [self.statements, self.persona.scratch.name, self.target_persona.scratch.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split('"')[0].strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split('"')[0].strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1378,8 +1265,6 @@ class AgentChatPrompt(BasePrompt):
     self.init_summ_idea = init_summ_idea
     self.target_summ_idea = target_summ_idea
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/agent_chat_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = '[["Jane Doe", "Hi!"], ["John Doe", "Hello there!"] ... ]'
     self.special_instruction = 'The output should be a list of list where the inner lists are in the form of ["<Name>", "<Utterance>"].'
 
@@ -1421,12 +1306,12 @@ class AgentChatPrompt(BasePrompt):
                     self.persona.scratch.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    gpt_response = (prompt + gpt_response).split("Here is their conversation.")[-1].strip()
-    content = re.findall('"([^"]*)"', gpt_response)
+  def clean_up(self, llm_response, prompt=""):
+    llm_response = (prompt + llm_response).split("Here is their conversation.")[-1].strip()
+    content = re.findall('"([^"]*)"', llm_response)
 
     speaker_order = []
-    for i in gpt_response.split("\n"): 
+    for i in llm_response.split("\n"): 
       name = i.split(":")[0].strip() 
       if name: 
         speaker_order += [name]
@@ -1437,7 +1322,7 @@ class AgentChatPrompt(BasePrompt):
 
     return ret
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     return True
 
   def get_fail_safe(self):
@@ -1449,8 +1334,6 @@ class SummarizeIdeasPrompt(BasePrompt):
     self.statements = statements
     self.question = question
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/summarize_ideas_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = 'Jane Doe is working on a project'
     self.special_instruction = 'The output should be a string that responds to the question.'
 
@@ -1458,12 +1341,12 @@ class SummarizeIdeasPrompt(BasePrompt):
     prompt_input = [self.statements, self.persona.scratch.name, self.question]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split('"')[0].strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split('"')[0].strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1478,9 +1361,6 @@ class GenerateNextConvoLinePrompt(BasePrompt):
     self.prev_convo = prev_convo
     self.retrieved_summary = retrieved_summary
     self.prompt_template = "persona/prompt_template/v2/generate_next_convo_line_v1.txt"
-    self.gpt_param["max_tokens"] = 250
-    self.gpt_param["temperature"] = 1
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.persona.scratch.name, 
@@ -1493,12 +1373,12 @@ class GenerateNextConvoLinePrompt(BasePrompt):
                     self.persona.scratch.name,]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split('"')[0].strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split('"')[0].strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1511,19 +1391,17 @@ class WhisperInnerThoughtPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.whisper = whisper
     self.prompt_template = "persona/prompt_template/v2/whisper_inner_thought_v1.txt"
-    self.gpt_param["max_tokens"] = 50
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.persona.scratch.name, self.whisper]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split('"')[0].strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split('"')[0].strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1536,19 +1414,17 @@ class PlanningThoughtOnConvoPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.all_utt = all_utt
     self.prompt_template = "persona/prompt_template/v2/planning_thought_on_convo_v1.txt"
-    self.gpt_param["max_tokens"] = 50
-    self.gpt_param["stop"] = None
 
   def create_prompt_input(self, test_input=None):
     prompt_input = [self.all_utt, self.persona.scratch.name, self.persona.scratch.name, self.persona.scratch.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.split('"')[0].strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.split('"')[0].strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
@@ -1561,8 +1437,6 @@ class MemoOnConvoPrompt(BasePrompt):
     super().__init__(persona, verbose)
     self.all_utt = all_utt
     self.prompt_template = "persona/prompt_template/v3_ChatGPT/memo_on_convo_v1.txt"
-    self.gpt_param["max_tokens"] = 15
-    self.gpt_param["stop"] = None
     self.example_output = 'Jane Doe was interesting to talk to.'
     self.special_instruction = 'The output should ONLY contain a string that summarizes anything interesting that the agent may have noticed'
 
@@ -1570,12 +1444,12 @@ class MemoOnConvoPrompt(BasePrompt):
     prompt_input = [self.all_utt, self.persona.scratch.name, self.persona.scratch.name, self.persona.scratch.name]
     return prompt_input
 
-  def clean_up(self, gpt_response, prompt=""):
-    return gpt_response.strip()
+  def clean_up(self, llm_response, prompt=""):
+    return llm_response.strip()
 
-  def validate(self, gpt_response, prompt=""):
+  def validate(self, llm_response, prompt=""):
     try: 
-      self.clean_up(gpt_response, prompt)
+      self.clean_up(llm_response, prompt)
       return True
     except:
       return False 
