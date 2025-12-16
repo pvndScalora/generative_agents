@@ -559,7 +559,7 @@ class PersonaFactory:
         # Create minimal dependencies if not provided
         _scratch = scratch if scratch else Scratch(None)
         _s_mem = s_mem if s_mem else MemoryTree({})
-        _a_mem = a_mem if a_mem else AssociativeMemory(None)
+        _a_mem = a_mem if a_mem else AssociativeMemory()  # Now uses defaults
         
         # Link memories
         _scratch.state.memory_system.spatial_memory = _s_mem

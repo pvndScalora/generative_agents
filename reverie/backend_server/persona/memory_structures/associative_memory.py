@@ -15,7 +15,37 @@ import datetime
 from reverie.backend_server.models import Memory, MemoryType
 
 class AssociativeMemory: 
-  def __init__(self, nodes_load, embeddings, kw_strength): 
+  """
+  The Memory Stream - core long-term memory module for generative agents.
+  
+  Stores three types of memories:
+  - Events: Things that happened ("Isabella made coffee")
+  - Thoughts: Reflections and insights ("I should invite more people to my party")
+  - Chats: Conversations with other agents
+  
+  Attributes:
+    kw_strength_event: Keyword frequency counter for events. Maps keyword -> count.
+        NOTE: Currently tracked but NOT USED in cognitive decisions. This appears
+        to be scaffolding for a feature that was never implemented (possibly for
+        keyword-based reflection triggering via kw_strg_event_reflect_th).
+    kw_strength_thought: Same as above but for thoughts.
+  """
+  
+  def __init__(self, nodes_load=None, embeddings=None, kw_strength=None): 
+    """
+    Initialize AssociativeMemory.
+    
+    Args:
+        nodes_load: Dict of node_id -> node_details to restore from disk. Default: empty.
+        embeddings: Dict of embedding_key -> embedding_vector. Default: empty.
+        kw_strength: Dict with 'kw_strength_event' and 'kw_strength_thought' keys.
+                     Default: empty counters for both.
+    """
+    # Default arguments
+    nodes_load = nodes_load or {}
+    embeddings = embeddings or {}
+    kw_strength = kw_strength or {"kw_strength_event": {}, "kw_strength_thought": {}}
+    
     self.id_to_node = dict()
 
     self.seq_event = []
@@ -26,6 +56,7 @@ class AssociativeMemory:
     self.kw_to_thought = dict()
     self.kw_to_chat = dict()
 
+    # Keyword frequency counters (tracked but currently unused in decisions)
     self.kw_strength_event = dict()
     self.kw_strength_thought = dict()
 
