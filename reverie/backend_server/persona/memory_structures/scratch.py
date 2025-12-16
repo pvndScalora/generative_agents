@@ -657,6 +657,19 @@ class Scratch:
     return self.act_start_time.strftime("%H:%M %p")
 
 
+  def get_current_action(self):
+    """
+    Returns the current action as a CurrentAction object.
+    Used for building AgentContext snapshots.
+    
+    Returns:
+        CurrentAction: The current action state, or None if no action is set.
+    """
+    if not self.act_address:
+      return None
+    return self.act
+
+
   def act_check_finished(self): 
     """
     Checks whether the self.Action instance has finished.  

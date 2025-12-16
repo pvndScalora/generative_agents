@@ -1,21 +1,59 @@
 import math
 import logging
 from operator import itemgetter
+from typing import List, TYPE_CHECKING, Optional
+
 from .base import AbstractPerceiver
 from persona.prompt_template.gpt_structure import get_embedding
 from persona.prompt_template.run_gpt_prompt import run_gpt_prompt_event_poignancy, run_gpt_prompt_chat_poignancy
-from typing import TYPE_CHECKING
+from reverie.backend_server.models import PerceptionResult
 
 if TYPE_CHECKING:
     from persona.persona import Persona
     from persona.memory_structures.scratch import Scratch
+    from persona.memory_structures.spatial_memory import MemoryTree
     from reverie.backend_server.maze import Maze
+    from reverie.backend_server.models import AgentContext, WorldContext, Memory
+
 
 class LegacyPerceiver(AbstractPerceiver):
+    """
+    Legacy implementation of the Perception cognitive module.
+    
+    This implementation uses the scratch-based interface for backward compatibility.
+    It also implements the new contract-based interface which delegates to the
+    scratch-based implementation.
+    """
+    
     def __init__(self, scratch: "Scratch"):
         self.scratch = scratch
 
-    def perceive(self, maze: "Maze"):
+    def perceive(self, 
+                 maze_or_agent: "Maze",
+                 world: Optional["WorldContext"] = None,
+                 maze: Optional["Maze"] = None,
+                 spatial_memory: Optional["MemoryTree"] = None,
+                 recent_memories: Optional[List["Memory"]] = None
+    ) -> "PerceptionResult":
+        """
+        Perceive events around the persona.
+        
+        Supports both interfaces:
+        - Legacy: perceive(maze) - uses self.scratch for all state
+        - New: perceive(agent, world, maze, spatial_memory, recent_memories)
+        
+        For now, both delegate to the scratch-based implementation.
+        """
+        # Determine which interface is being used
+        if world is None:
+            # Legacy interface: maze_or_agent is actually the maze
+            return self._perceive_legacy(maze_or_agent)
+        else:
+            # New interface: maze_or_agent is AgentContext
+            # For now, delegate to legacy (scratch already has the state)
+            return self._perceive_legacy(maze)
+
+    def _perceive_legacy(self, maze: "Maze") -> List:
         """
         Perceives events around the persona and saves it to the memory, both events 
         and spaces. 

@@ -1,20 +1,60 @@
 import random
+from typing import Dict, Any, Optional, Union, TYPE_CHECKING
+
 from .base import AbstractExecutor
 from reverie.backend_server.path_finder import path_finder
 from reverie.backend_server.config import COLLISION_BLOCK_ID
-from typing import Dict, Any, TYPE_CHECKING
-from reverie.backend_server.models import PlanExecution
+from reverie.backend_server.models import PlanExecution, ExecutionResult
 
 if TYPE_CHECKING:
     from persona.persona import Persona
     from persona.memory_structures.scratch import Scratch
     from reverie.backend_server.maze import Maze
+    from reverie.backend_server.models import AgentContext, PlanResult
+
 
 class LegacyExecutor(AbstractExecutor):
+    """
+    Legacy implementation of the Execution cognitive module.
+    
+    Converts plans into concrete movement paths using pathfinding.
+    Supports both scratch-based and contract-based interfaces.
+    """
+    
     def __init__(self, scratch: "Scratch"):
         self.scratch = scratch
 
-    def execute(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str) -> PlanExecution: 
+    def execute(self, 
+                agent_or_maze: Union["AgentContext", "Maze"],
+                plan_or_personas: Union["PlanResult", Dict[str, "Persona"]] = None,
+                maze_or_plan: Union["Maze", str] = None,
+                other_agents: Optional[Dict[str, "AgentContext"]] = None
+    ) -> Union["ExecutionResult", PlanExecution]:
+        """
+        Execute a plan by finding a path to the target location.
+        
+        Supports both interfaces:
+        - Legacy: execute(maze, personas, plan) -> PlanExecution
+        - New: execute(agent, plan, maze, other_agents) -> ExecutionResult
+        
+        Detects which interface based on argument types.
+        """
+        # Detect interface based on first argument type
+        if hasattr(agent_or_maze, 'collision_maze'):
+            # Legacy interface: agent_or_maze is actually a Maze
+            maze = agent_or_maze
+            personas = plan_or_personas
+            plan = maze_or_plan
+            return self._execute_legacy(maze, personas, plan)
+        else:
+            # New interface: agent_or_maze is AgentContext
+            # For now, delegate to legacy since scratch has the state
+            plan_result = plan_or_personas
+            maze = maze_or_plan
+            plan_str = plan_result.action_address if plan_result else self.scratch.act_address
+            return self._execute_legacy(maze, {}, plan_str)
+
+    def _execute_legacy(self, maze: "Maze", personas: Dict[str, "Persona"], plan: str) -> PlanExecution: 
         """
         Given a plan (action's string address), we execute the plan (actually 
         outputs the tile coordinate path and the next coordinate for the 

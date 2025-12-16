@@ -1,31 +1,45 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, TYPE_CHECKING
-from reverie.backend_server.models import Memory
+from typing import Dict, Any, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from reverie.backend_server.maze import Maze
-    from persona.persona import Persona
+    from reverie.backend_server.models import (
+        AgentContext, WorldContext, RetrievalResult, PlanResult
+    )
+
 
 class AbstractPlanner(ABC):
     """
     Abstract base class for the Planning cognitive module.
     
-    The Planner is responsible for generating the agent's daily schedule and 
-    determining the next immediate action based on the current state and retrieved memories.
+    Responsibility: Decide what the agent should do next.
+    
+    Does NOT: Execute actions, modify state directly, handle conversations.
+    All decisions are returned as PlanResult and applied by Persona.
     """
 
     @abstractmethod
-    def plan(self, maze: "Maze", personas: Dict[str, "Persona"], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
+    def plan(self,
+             agent: "AgentContext",
+             world: "WorldContext",
+             maze: "Maze",
+             retrieved: Dict[str, "RetrievalResult"],
+             other_agents: Dict[str, "AgentContext"],
+             is_new_day: Union[bool, str]
+    ) -> "PlanResult":
         """
         Main cognitive function for planning.
 
         Args:
-            maze: The Maze instance of the current world.
-            personas: A dictionary of all Persona instances in the world.
-            new_day: Indicates if it is a new day cycle (False, "First day", or "New day").
-            retrieved: A dictionary of relevant memories (output from the Retriever).
+            agent: Immutable snapshot of this agent's current state.
+            world: Immutable snapshot of the visible world.
+            maze: The Maze instance for spatial reasoning.
+            retrieved: Dictionary of relevant memories from the Retriever.
+            other_agents: Dictionary of other agents' contexts (name -> AgentContext).
+                         NOT full Persona objects to prevent tight coupling.
+            is_new_day: False, "First day", or "New day" indicating day transitions.
 
         Returns:
-            The target action address of the persona (e.g., "world:sector:arena:game_object").
+            PlanResult containing the decided action and any schedule updates.
         """
         pass

@@ -1,75 +1,105 @@
-from typing import List, Dict, Any, TYPE_CHECKING
+from typing import List, Dict, Any, TYPE_CHECKING, Optional
 from numpy import dot
 from numpy.linalg import norm
 
-from reverie.backend_server.models import Memory
+from reverie.backend_server.models import Memory, RetrievalResult
 from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
 from .base import AbstractRetriever
 
 if TYPE_CHECKING:
     from persona.memory_structures.scratch import Scratch
+    from persona.memory_structures.associative_memory import AssociativeMemory
+    from reverie.backend_server.models import AgentContext
+
 
 class LegacyRetriever(AbstractRetriever):
     """
-    The legacy implementation of the retrieval module.
+    Legacy implementation of the Retrieval cognitive module.
+    
     Uses a weighted score of Recency, Importance, and Relevance.
+    Supports both scratch-based and contract-based interfaces.
     """
 
     def __init__(self, scratch: "Scratch"):
         self.scratch = scratch
 
-    def retrieve(self, perceived: List[Memory]) -> Dict[str, Dict[str, Any]]:
+    def retrieve(self, 
+                 perceived_or_queries: List[Memory],
+                 agent: Optional["AgentContext"] = None,
+                 memory_store: Optional["AssociativeMemory"] = None
+    ) -> Dict[str, Any]:
         """
-        Takes a list of perceived events and returns a dictionary of relevant memories.
+        Retrieve relevant memories for perceived events.
+        
+        Supports both interfaces:
+        - Legacy: retrieve(perceived) - uses self.scratch for memory access
+        - New: retrieve(queries, agent, memory_store) - explicit dependencies
+        
+        Returns:
+            Dictionary mapping event descriptions to RetrievalResult or legacy dict format.
         """
+        # Use scratch's memory if not explicitly provided
+        a_mem = memory_store if memory_store else self.scratch.a_mem
+        
         retrieved = dict()
-        for event in perceived: 
+        for event in perceived_or_queries: 
             retrieved[event.description] = dict()
             retrieved[event.description]["curr_event"] = event
             
-            # We need to access the persona's associative memory to retrieve relevant events/thoughts
-            # The original code called persona.a_mem.retrieve_relevant_events which likely calls new_retrieve internally
-            # But wait, retrieve_relevant_events is a method on AssociativeMemory?
-            # Let's check AssociativeMemory.retrieve_relevant_events implementation.
-            # If it calls `new_retrieve` from the global scope, we need to be careful.
-            
-            # Looking at the original retrieve.py:
-            # relevant_events = persona.a_mem.retrieve_relevant_events(event.subject, event.predicate, event.object)
-            # relevant_thoughts = persona.a_mem.retrieve_relevant_thoughts(event.subject, event.predicate, event.object)
-            
-            # If AssociativeMemory methods are just wrappers around `new_retrieve` (which is in retrieve.py),
-            # then we should implement `new_retrieve` logic here and update AssociativeMemory to use THIS class.
-            
-            # However, for this refactoring step, we want to encapsulate the logic that was in `retrieve.py`.
-            # The `retrieve` function in `retrieve.py` calls `persona.a_mem.retrieve_relevant_events`.
-            # The `new_retrieve` function in `retrieve.py` implements the scoring logic.
-            
-            # It seems `AssociativeMemory` depends on `retrieve.py`'s `new_retrieve`.
-            # This is a circular dependency or tight coupling we need to break.
-            
-            # For now, let's implement the `retrieve` method as it was, but we might need to move `new_retrieve` logic 
-            # into this class as well, and expose it.
-            
-            relevant_events = self.scratch.a_mem.retrieve_relevant_events(
+            relevant_events = a_mem.retrieve_relevant_events(
                                 event.subject, event.predicate, event.object)
             retrieved[event.description]["events"] = list(relevant_events)
 
-            relevant_thoughts = self.scratch.a_mem.retrieve_relevant_thoughts(
+            relevant_thoughts = a_mem.retrieve_relevant_thoughts(
                                 event.subject, event.predicate, event.object)
             retrieved[event.description]["thoughts"] = list(relevant_thoughts)
             
         return retrieved
 
+    def retrieve_by_focal_points(self,
+                                  focal_points: List[str],
+                                  agent: Optional["AgentContext"] = None,
+                                  memory_store: Optional["AssociativeMemory"] = None,
+                                  n_count: int = 30
+    ) -> Dict[str, "RetrievalResult"]:
+        """
+        Retrieve memories based on focal point strings (for reflection).
+        
+        New contract-based interface that wraps retrieve_weighted.
+        """
+        # Use scratch's memory if not explicitly provided
+        a_mem = memory_store if memory_store else self.scratch.a_mem
+        
+        raw_results = self._retrieve_weighted_internal(focal_points, a_mem, n_count)
+        
+        # Convert to RetrievalResult format
+        results = {}
+        for focal_pt, nodes in raw_results.items():
+            results[focal_pt] = RetrievalResult(
+                query_event=None,
+                relevant_events=[n for n in nodes if n.type.value == "event"],
+                relevant_thoughts=[n for n in nodes if n.type.value == "thought"],
+            )
+        return results
+
     def retrieve_weighted(self, focal_points: List[str], n_count: int = 30) -> Dict[str, List[Memory]]:
         """
-        This corresponds to the `new_retrieve` function in the original file.
-        Given focal points, retrieves a set of nodes based on weighted scoring.
+        Legacy interface: Given focal points, retrieves nodes based on weighted scoring.
+        """
+        return self._retrieve_weighted_internal(focal_points, self.scratch.a_mem, n_count)
+
+    def _retrieve_weighted_internal(self, 
+                                     focal_points: List[str], 
+                                     a_mem: "AssociativeMemory",
+                                     n_count: int = 30) -> Dict[str, List[Memory]]:
+        """
+        Internal implementation of weighted retrieval.
         """
         retrieved = dict() 
         for focal_pt in focal_points: 
             # Getting all nodes from the agent's memory (both thoughts and events)
             nodes = [[i.last_accessed, i]
-                    for i in self.scratch.a_mem.seq_event + self.scratch.a_mem.seq_thought
+                    for i in a_mem.seq_event + a_mem.seq_thought
                     if "idle" not in i.embedding_key]
             nodes = sorted(nodes, key=lambda x: x[0])
             nodes = [i for created, i in nodes]
@@ -79,7 +109,7 @@ class LegacyRetriever(AbstractRetriever):
             recency_out = self._normalize_dict_floats(recency_out, 0, 1)
             importance_out = self._extract_importance(nodes)
             importance_out = self._normalize_dict_floats(importance_out, 0, 1)  
-            relevance_out = self._extract_relevance(nodes, focal_pt)
+            relevance_out = self._extract_relevance(nodes, focal_pt, a_mem)
             relevance_out = self._normalize_dict_floats(relevance_out, 0, 1)
 
             # Computing the final scores
@@ -92,7 +122,7 @@ class LegacyRetriever(AbstractRetriever):
 
             # Extracting the highest x values.
             master_out = self._top_highest_x_values(master_out, n_count)
-            master_nodes = [self.scratch.a_mem.id_to_node[key] 
+            master_nodes = [a_mem.id_to_node[key] 
                             for key in list(master_out.keys())]
 
             for n in master_nodes: 
@@ -119,12 +149,14 @@ class LegacyRetriever(AbstractRetriever):
 
         return importance_out
 
-    def _extract_relevance(self, nodes: List[Memory], focal_pt: str) -> Dict[str, float]:
+    def _extract_relevance(self, nodes: List[Memory], focal_pt: str, 
+                           a_mem: Optional["AssociativeMemory"] = None) -> Dict[str, float]:
         focal_embedding = get_embedding(focal_pt)
+        memory = a_mem if a_mem else self.scratch.a_mem
 
         relevance_out = dict()
         for count, node in enumerate(nodes): 
-            node_embedding = self.scratch.a_mem.embeddings[node.embedding_key]
+            node_embedding = memory.embeddings[node.embedding_key]
             relevance_out[node.id] = self._cos_sim(node_embedding, focal_embedding)
 
         return relevance_out

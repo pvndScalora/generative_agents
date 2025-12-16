@@ -1,70 +1,142 @@
 import datetime
 import random
 import logging
+from typing import List, Optional, TYPE_CHECKING
 
 from numpy import dot
 from numpy.linalg import norm
 
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import *
+from reverie.backend_server.models import ReflectionResult
 from .base import AbstractReflector
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from persona.memory_structures.scratch import Scratch
+    from persona.memory_structures.associative_memory import AssociativeMemory
     from persona.cognitive_modules.retriever.base import AbstractRetriever
+    from reverie.backend_server.models import AgentContext
+
 
 class LegacyReflector(AbstractReflector):
+    """
+    Legacy implementation of the Reflection cognitive module.
+    
+    Generates insights from accumulated experiences and conversations.
+    Supports both scratch-based and contract-based interfaces.
+    """
+    
     def __init__(self, scratch: "Scratch", retriever: "AbstractRetriever"):
         self.scratch = scratch
         self.retriever = retriever
 
-    def reflect(self):
+    def reflect(self,
+                agent: Optional["AgentContext"] = None,
+                memory_store: Optional["AssociativeMemory"] = None,
+                retriever: Optional["AbstractRetriever"] = None
+    ) -> "ReflectionResult":
         """
-        The main reflection module for the persona. We first check if the trigger 
-        conditions are met, and if so, run the reflection and reset any of the 
-        relevant counters. 
+        Generate reflections from accumulated experiences.
+        
+        Supports both interfaces:
+        - Legacy: reflect() - uses self.scratch and self.retriever
+        - New: reflect(agent, memory_store, retriever) - explicit dependencies
+        
+        Returns:
+            ReflectionResult with new thoughts and counter info (or None for legacy)
         """
+        # Use provided or default dependencies
+        a_mem = memory_store if memory_store else self.scratch.a_mem
+        ret = retriever if retriever else self.retriever
+        
+        new_thoughts = []
+        should_reset = False
+        
         if self._reflection_trigger(): 
-            self._run_reflect()
+            new_thoughts = self._run_reflect(a_mem, ret)
             self._reset_reflection_counter()
+            should_reset = True
 
+        # Handle conversation reflection
         if self.scratch.chatting_end_time: 
             if self.scratch.curr_time + datetime.timedelta(0,10) == self.scratch.chatting_end_time: 
-                all_utt = ""
-                if self.scratch.chat: 
-                    for row in self.scratch.chat:  
-                        all_utt += f"{row[0]}: {row[1]}\n"
+                convo_thoughts = self._reflect_on_conversation_internal(a_mem)
+                new_thoughts.extend(convo_thoughts)
 
-                evidence = [self.scratch.a_mem.get_last_chat(self.scratch.chatting_with).node_id]
+        return ReflectionResult(
+            new_thoughts=new_thoughts,
+            focal_points=[],
+            importance_accumulated=0,
+            should_reset_counter=should_reset
+        )
 
-                planning_thought = self._generate_planning_thought_on_convo(all_utt)
-                planning_thought = f"For {self.scratch.name}'s planning: {planning_thought}"
+    def reflect_on_conversation(self,
+                                 agent: "AgentContext",
+                                 conversation: list,
+                                 memory_store: "AssociativeMemory"
+    ) -> "ReflectionResult":
+        """
+        Generate reflections specifically about a recent conversation.
+        """
+        thoughts = self._reflect_on_conversation_internal(memory_store, conversation)
+        return ReflectionResult(
+            new_thoughts=thoughts,
+            focal_points=[],
+            importance_accumulated=0,
+            should_reset_counter=False
+        )
 
-                created = self.scratch.curr_time
-                expiration = self.scratch.curr_time + datetime.timedelta(days=30)
-                s, p, o = self._generate_action_event_triple(planning_thought)
-                keywords = set([s, p, o])
-                thought_poignancy = self._generate_poig_score("thought", planning_thought)
-                thought_embedding_pair = (planning_thought, get_embedding(planning_thought))
+    def _reflect_on_conversation_internal(self, 
+                                          a_mem: "AssociativeMemory" = None,
+                                          conversation: list = None) -> List:
+        """
+        Internal implementation of conversation reflection.
+        """
+        a_mem = a_mem if a_mem else self.scratch.a_mem
+        chat = conversation if conversation else self.scratch.chat
+        thoughts = []
+        
+        all_utt = ""
+        if chat: 
+            for row in chat:  
+                all_utt += f"{row[0]}: {row[1]}\n"
 
-                self.scratch.a_mem.add_thought(created, expiration, s, p, o, 
-                                            planning_thought, keywords, thought_poignancy, 
-                                            thought_embedding_pair, evidence)
+        if not all_utt:
+            return thoughts
 
-                memo_thought = self._generate_memo_on_convo(all_utt)
-                memo_thought = f"{self.scratch.name} {memo_thought}"
+        evidence = [a_mem.get_last_chat(self.scratch.chatting_with).node_id]
 
-                created = self.scratch.curr_time
-                expiration = self.scratch.curr_time + datetime.timedelta(days=30)
-                s, p, o = self._generate_action_event_triple(memo_thought)
-                keywords = set([s, p, o])
-                thought_poignancy = self._generate_poig_score("thought", memo_thought)
-                thought_embedding_pair = (memo_thought, get_embedding(memo_thought))
+        planning_thought = self._generate_planning_thought_on_convo(all_utt)
+        planning_thought = f"For {self.scratch.name}'s planning: {planning_thought}"
 
-                self.scratch.a_mem.add_thought(created, expiration, s, p, o, 
-                                            memo_thought, keywords, thought_poignancy, 
-                                            thought_embedding_pair, evidence)
+        created = self.scratch.curr_time
+        expiration = self.scratch.curr_time + datetime.timedelta(days=30)
+        s, p, o = self._generate_action_event_triple(planning_thought)
+        keywords = set([s, p, o])
+        thought_poignancy = self._generate_poig_score("thought", planning_thought)
+        thought_embedding_pair = (planning_thought, get_embedding(planning_thought))
+
+        thought1 = a_mem.add_thought(created, expiration, s, p, o, 
+                                    planning_thought, keywords, thought_poignancy, 
+                                    thought_embedding_pair, evidence)
+        thoughts.append(thought1)
+
+        memo_thought = self._generate_memo_on_convo(all_utt)
+        memo_thought = f"{self.scratch.name} {memo_thought}"
+
+        created = self.scratch.curr_time
+        expiration = self.scratch.curr_time + datetime.timedelta(days=30)
+        s, p, o = self._generate_action_event_triple(memo_thought)
+        keywords = set([s, p, o])
+        thought_poignancy = self._generate_poig_score("thought", memo_thought)
+        thought_embedding_pair = (memo_thought, get_embedding(memo_thought))
+
+        thought2 = a_mem.add_thought(created, expiration, s, p, o, 
+                                    memo_thought, keywords, thought_poignancy, 
+                                    thought_embedding_pair, evidence)
+        thoughts.append(thought2)
+        
+        return thoughts
 
     def _reflection_trigger(self): 
         print (self.scratch.name, "persona.scratch.importance_trigger_curr::", self.scratch.importance_trigger_curr)
@@ -80,11 +152,20 @@ class LegacyReflector(AbstractReflector):
         self.scratch.importance_trigger_curr = persona_imt_max
         self.scratch.importance_ele_n = 0
 
-    def _run_reflect(self):
+    def _run_reflect(self, 
+                     a_mem: "AssociativeMemory" = None,
+                     retriever: "AbstractRetriever" = None) -> List:
+        """
+        Run the reflection process and return new thoughts.
+        """
+        a_mem = a_mem if a_mem else self.scratch.a_mem
+        retriever = retriever if retriever else self.retriever
+        new_thoughts = []
+        
         # Reflection requires certain focal points. Generate that first. 
         focal_points = self._generate_focal_points(3)
         # Retrieve the relevant Nodes object for each of the focal points. 
-        retrieved = self.retriever.retrieve_weighted(focal_points)
+        retrieved = retriever.retrieve_weighted(focal_points)
 
         # For each of the focal points, generate thoughts and save it in the 
         # agent's memory. 
@@ -101,9 +182,12 @@ class LegacyReflector(AbstractReflector):
                 thought_poignancy = self._generate_poig_score("thought", thought)
                 thought_embedding_pair = (thought, get_embedding(thought))
 
-                self.scratch.a_mem.add_thought(created, expiration, s, p, o, 
+                new_thought = a_mem.add_thought(created, expiration, s, p, o, 
                                             thought, keywords, thought_poignancy, 
                                             thought_embedding_pair, evidence)
+                new_thoughts.append(new_thought)
+        
+        return new_thoughts
 
     def _generate_focal_points(self, n=3): 
         logging.debug("GNS FUNCTION: <generate_focal_points>")

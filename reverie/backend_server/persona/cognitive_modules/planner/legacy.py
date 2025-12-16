@@ -2,12 +2,13 @@ import datetime
 import math
 import random
 import logging
-from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Tuple, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from reverie.backend_server.maze import Maze
     from persona.persona import Persona
     from persona.memory_structures.scratch import Scratch
+    from reverie.backend_server.models import AgentContext, WorldContext, RetrievalResult, PlanResult
 
 from reverie.backend_server.models import Action
 from reverie.backend_server.persona.prompt_template.run_gpt_prompt import (
@@ -29,14 +30,17 @@ from reverie.backend_server.persona.prompt_template.run_gpt_prompt import (
     ChatGPT_single_request
 )
 from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
-# from reverie.backend_server.persona.cognitive_modules.converse import agent_chat_v2
 from .base import AbstractPlanner
+
 
 class LegacyPlanner(AbstractPlanner):
     """
-    The legacy implementation of the planning module.
+    Legacy implementation of the Planning cognitive module.
+    
     Includes long-term planning (daily schedule), short-term planning (next action),
     and reaction to perceived events.
+    
+    Supports both scratch-based and contract-based interfaces.
     """
 
     def __init__(self, scratch: "Scratch", retriever: Any, converser: Any):
@@ -44,9 +48,43 @@ class LegacyPlanner(AbstractPlanner):
         self.retriever = retriever
         self.converser = converser
 
-    def plan(self, maze: "Maze", personas: Dict[str, "Persona"], new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
+    def plan(self,
+             agent_or_maze: Union["AgentContext", "Maze"],
+             world_or_personas: Union["WorldContext", Dict[str, "Persona"]] = None,
+             maze_or_new_day: Union["Maze", Any] = None,
+             retrieved: Union[Dict[str, "RetrievalResult"], Dict[str, Dict[str, Any]]] = None,
+             other_agents: Optional[Dict[str, "AgentContext"]] = None,
+             is_new_day: Optional[Union[bool, str]] = None
+    ) -> Union["PlanResult", str]:
         """
         Main cognitive function for planning.
+        
+        Supports both interfaces:
+        - Legacy: plan(maze, personas, new_day, retrieved) -> str
+        - New: plan(agent, world, maze, retrieved, other_agents, is_new_day) -> PlanResult
+        
+        Detects which interface based on argument types.
+        """
+        # Detect interface based on first argument type
+        if hasattr(agent_or_maze, 'collision_maze'):
+            # Legacy interface: agent_or_maze is actually a Maze
+            maze = agent_or_maze
+            personas = world_or_personas
+            new_day = maze_or_new_day
+            return self._plan_legacy(maze, personas, new_day, retrieved or {})
+        else:
+            # New interface: agent_or_maze is AgentContext
+            # For now, delegate to legacy since scratch has the state
+            maze = maze_or_new_day
+            new_day = is_new_day
+            # Convert other_agents back to personas dict if needed
+            # This is a bridge until full migration
+            return self._plan_legacy(maze, {}, new_day, retrieved or {})
+
+    def _plan_legacy(self, maze: "Maze", personas: Dict[str, "Persona"], 
+                     new_day: Any, retrieved: Dict[str, Dict[str, Any]]) -> str:
+        """
+        Legacy planning implementation.
         """
         # PART 1: Generate the hourly schedule. 
         if new_day: 

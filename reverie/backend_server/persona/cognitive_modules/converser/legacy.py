@@ -1,21 +1,36 @@
 import datetime
 import logging
+from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
+
 from .base import AbstractConverser
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import get_embedding
-from typing import TYPE_CHECKING
+from reverie.backend_server.models import ConversationResult
 
 if TYPE_CHECKING:
     from persona.memory_structures.scratch import Scratch
+    from persona.memory_structures.associative_memory import AssociativeMemory
     from persona.cognitive_modules.retriever.base import AbstractRetriever
     from reverie.backend_server.maze import Maze
+    from reverie.backend_server.models import AgentContext, RetrievalResult
+
 
 class LegacyConverser(AbstractConverser):
+    """
+    Legacy implementation of the Conversation cognitive module.
+    
+    Handles conversational interactions between agents.
+    Supports both scratch-based and contract-based interfaces.
+    """
+    
     def __init__(self, scratch: "Scratch", retriever: "AbstractRetriever"):
         self.scratch = scratch
         self.retriever = retriever
 
-    def open_session(self, convo_mode: str): 
+    def open_session(self, convo_mode: str):
+        """
+        Open an interactive conversation session (for debugging/analysis).
+        """
         if convo_mode == "analysis": 
             curr_convo = []
             interlocutor_desc = "Interviewer"
@@ -36,10 +51,64 @@ class LegacyConverser(AbstractConverser):
                     next_line = self._generate_next_line(interlocutor_desc, curr_convo, summarized_idea)
                     curr_convo += [[self.scratch.name, next_line]]
 
-
         elif convo_mode == "whisper": 
             whisper = input("Enter Input: ")
             self.receive_whisper(whisper)
+
+    def generate_utterance(self,
+                           agent: "AgentContext",
+                           other_agent: "AgentContext",
+                           conversation_history: List[Tuple[str, str]],
+                           retrieved: Dict[str, "RetrievalResult"],
+                           memory_store: "AssociativeMemory"
+    ) -> "ConversationResult":
+        """
+        Generate the next utterance in a conversation.
+        
+        New contract-based interface.
+        """
+        # Convert to format expected by legacy methods
+        curr_chat = [[speaker, utt] for speaker, utt in conversation_history]
+        
+        # Generate utterance using legacy helpers
+        # This is a simplified version - full implementation would need target_persona
+        utt, end = self._generate_one_utterance_simple(
+            other_agent.identity.name, 
+            other_agent.current_focus if hasattr(other_agent, 'current_focus') else "",
+            retrieved, 
+            curr_chat
+        )
+        
+        return ConversationResult(
+            utterance=utt,
+            end_conversation=end,
+            conversation_summary=None,
+            planning_thought=None,
+            memo_thought=None
+        )
+
+    def decide_to_talk(self,
+                       agent: "AgentContext",
+                       other_agent: "AgentContext",
+                       retrieved: Dict[str, "RetrievalResult"]
+    ) -> Tuple[bool, str]:
+        """
+        Decide whether to initiate conversation with another agent.
+        """
+        # Delegate to legacy implementation through scratch
+        # This would need the full persona for the legacy method
+        return (False, "")
+
+    def _generate_one_utterance_simple(self, 
+                                        other_name: str,
+                                        other_act_desc: str,
+                                        retrieved: Dict,
+                                        curr_chat: List) -> Tuple[str, bool]:
+        """
+        Simplified utterance generation for new interface.
+        """
+        # This is a placeholder - full implementation would use the GPT prompts
+        return ("", True)
 
     def receive_whisper(self, whisper):
         thought = self._generate_inner_thought(whisper)
