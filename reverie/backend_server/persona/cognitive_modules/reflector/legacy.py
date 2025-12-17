@@ -9,6 +9,11 @@ from numpy.linalg import norm
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import *
 from reverie.backend_server.models import ReflectionResult
+from .triggers import (
+    ReflectionTrigger,
+    ReflectionContext,
+    ImportanceThresholdTrigger,
+)
 from .base import AbstractReflector
 
 if TYPE_CHECKING:
@@ -24,11 +29,26 @@ class LegacyReflector(AbstractReflector):
     
     Generates insights from accumulated experiences and conversations.
     Supports both scratch-based and contract-based interfaces.
+    
+    Now supports pluggable trigger strategies for experimental flexibility:
+        reflector = LegacyReflector(scratch, retriever)
+        reflector.trigger_strategy = TimedTrigger(interval_minutes=60)
     """
     
-    def __init__(self, scratch: "Scratch", retriever: "AbstractRetriever"):
+    def __init__(self, 
+                 scratch: "Scratch", 
+                 retriever: "AbstractRetriever",
+                 trigger_strategy: Optional[ReflectionTrigger] = None):
+        """
+        Args:
+            scratch: Scratch state for legacy compatibility.
+            retriever: Retriever module for memory retrieval.
+            trigger_strategy: Optional custom trigger strategy.
+                              Defaults to ImportanceThresholdTrigger (original paper).
+        """
         self.scratch = scratch
         self.retriever = retriever
+        self.trigger_strategy = trigger_strategy or ImportanceThresholdTrigger()
 
     def reflect(self,
                 agent: Optional["AgentContext"] = None,
@@ -52,10 +72,14 @@ class LegacyReflector(AbstractReflector):
         new_thoughts = []
         should_reset = False
         
-        if self._reflection_trigger(): 
+        # Use the trigger strategy for experimental flexibility
+        trigger_result = self._check_trigger(a_mem)
+        
+        if trigger_result.should_reflect: 
             new_thoughts = self._run_reflect(a_mem, ret)
-            self._reset_reflection_counter()
-            should_reset = True
+            if trigger_result.reset_importance_counter:
+                self._reset_reflection_counter()
+            should_reset = trigger_result.reset_importance_counter
 
         # Handle conversation reflection
         if self.scratch.chatting_end_time: 
@@ -138,7 +162,40 @@ class LegacyReflector(AbstractReflector):
         
         return thoughts
 
+    def _check_trigger(self, a_mem: "AssociativeMemory" = None) -> "TriggerResult":
+        """
+        Check if reflection should be triggered using the configured strategy.
+        
+        Builds a ReflectionContext from scratch state and delegates to the strategy.
+        """
+        from .triggers import TriggerResult
+        
+        a_mem = a_mem if a_mem else self.scratch.a_mem
+        
+        context = ReflectionContext(
+            importance_trigger_max=self.scratch.importance_trigger_max,
+            importance_trigger_curr=self.scratch.importance_trigger_curr,
+            importance_accumulated=self.scratch.importance_ele_n,
+            current_time=self.scratch.curr_time,
+            last_reflection_time=None,  # TODO: Track this in scratch if needed
+            total_events=len(a_mem.seq_event) if a_mem else 0,
+            total_thoughts=len(a_mem.seq_thought) if a_mem else 0,
+            events_since_reflection=0,  # TODO: Track this if needed
+            thoughts_since_reflection=0,  # TODO: Track this if needed
+            has_memories=bool(a_mem and (a_mem.seq_event or a_mem.seq_thought)),
+        )
+        
+        result = self.trigger_strategy.check(context)
+        
+        # Log for debugging (maintaining original behavior)
+        print(self.scratch.name, "persona.scratch.importance_trigger_curr::", self.scratch.importance_trigger_curr)
+        print(self.scratch.importance_trigger_max)
+        print(f"Trigger result: {result.reason}")
+        
+        return result
+    
     def _reflection_trigger(self): 
+        """Deprecated: Use _check_trigger with trigger_strategy instead."""
         print (self.scratch.name, "persona.scratch.importance_trigger_curr::", self.scratch.importance_trigger_curr)
         print (self.scratch.importance_trigger_max)
 

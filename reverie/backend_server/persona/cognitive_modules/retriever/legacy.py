@@ -4,6 +4,11 @@ from numpy.linalg import norm
 
 from reverie.backend_server.models import Memory, RetrievalResult
 from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
+from .scoring import (
+    MemoryScoringStrategy,
+    LinearWeightedScoring,
+    ScoringContext,
+)
 from .base import AbstractRetriever
 
 if TYPE_CHECKING:
@@ -18,10 +23,23 @@ class LegacyRetriever(AbstractRetriever):
     
     Uses a weighted score of Recency, Importance, and Relevance.
     Supports both scratch-based and contract-based interfaces.
+    
+    Now supports pluggable scoring strategies for experimental flexibility:
+        retriever = LegacyRetriever(scratch)
+        retriever.scoring_strategy = AttentionBasedScoring(temperature=0.5)
     """
 
-    def __init__(self, scratch: "Scratch"):
+    def __init__(self, 
+                 scratch: "Scratch",
+                 scoring_strategy: Optional[MemoryScoringStrategy] = None):
+        """
+        Args:
+            scratch: Scratch state for legacy compatibility.
+            scoring_strategy: Optional custom scoring strategy. 
+                              Defaults to LinearWeightedScoring (original paper).
+        """
         self.scratch = scratch
+        self.scoring_strategy = scoring_strategy or LinearWeightedScoring()
 
     def retrieve(self, 
                  perceived_or_queries: List[Memory],
@@ -94,6 +112,8 @@ class LegacyRetriever(AbstractRetriever):
                                      n_count: int = 30) -> Dict[str, List[Memory]]:
         """
         Internal implementation of weighted retrieval.
+        
+        Uses the configured scoring_strategy for flexible experimentation.
         """
         retrieved = dict() 
         for focal_pt in focal_points: 
@@ -104,24 +124,30 @@ class LegacyRetriever(AbstractRetriever):
             nodes = sorted(nodes, key=lambda x: x[0])
             nodes = [i for created, i in nodes]
 
-            # Calculating the component dictionaries and normalizing them.
-            recency_out = self._extract_recency(nodes)
-            recency_out = self._normalize_dict_floats(recency_out, 0, 1)
-            importance_out = self._extract_importance(nodes)
-            importance_out = self._normalize_dict_floats(importance_out, 0, 1)  
-            relevance_out = self._extract_relevance(nodes, focal_pt, a_mem)
-            relevance_out = self._normalize_dict_floats(relevance_out, 0, 1)
+            if not nodes:
+                retrieved[focal_pt] = []
+                continue
 
-            # Computing the final scores
-            gw = [0.5, 3, 2]
-            master_out = dict()
-            for key in recency_out.keys(): 
-                master_out[key] = (self.scratch.recency_w * recency_out[key] * gw[0] 
-                                + self.scratch.relevance_w * relevance_out[key] * gw[1] 
-                                + self.scratch.importance_w * importance_out[key] * gw[2])
+            # Use the scoring strategy for experimental flexibility
+            query_embedding = get_embedding(focal_pt)
+            context = ScoringContext(
+                recency_weight=self.scratch.recency_w,
+                relevance_weight=self.scratch.relevance_w,
+                importance_weight=self.scratch.importance_w,
+                recency_decay=self.scratch.recency_decay,
+                current_time_index=len(nodes),
+            )
+            
+            # Compute scores using the strategy
+            master_out = self.scoring_strategy.compute_scores(
+                memories=nodes,
+                query_embedding=query_embedding,
+                embeddings=a_mem.embeddings,
+                context=context
+            )
 
-            # Extracting the highest x values.
-            master_out = self._top_highest_x_values(master_out, n_count)
+            # Select top N using the strategy
+            master_out = self.scoring_strategy.select_top(master_out, n_count)
             master_nodes = [a_mem.id_to_node[key] 
                             for key in list(master_out.keys())]
 
@@ -132,7 +158,11 @@ class LegacyRetriever(AbstractRetriever):
 
         return retrieved
 
+    # Legacy helper methods - kept for backward compatibility
+    # These are now superseded by the MemoryScoringStrategy interface
+    
     def _extract_recency(self, nodes: List[Memory]) -> Dict[str, float]:
+        """Deprecated: Use scoring_strategy.compute_recency_scores instead."""
         recency_vals = [self.scratch.recency_decay ** i 
                         for i in range(1, len(nodes) + 1)]
         
@@ -143,6 +173,7 @@ class LegacyRetriever(AbstractRetriever):
         return recency_out
 
     def _extract_importance(self, nodes: List[Memory]) -> Dict[str, float]:
+        """Deprecated: Use scoring_strategy.compute_importance_scores instead."""
         importance_out = dict()
         for count, node in enumerate(nodes): 
             importance_out[node.id] = node.poignancy
@@ -151,6 +182,7 @@ class LegacyRetriever(AbstractRetriever):
 
     def _extract_relevance(self, nodes: List[Memory], focal_pt: str, 
                            a_mem: Optional["AssociativeMemory"] = None) -> Dict[str, float]:
+        """Deprecated: Use scoring_strategy.compute_relevance_scores instead."""
         focal_embedding = get_embedding(focal_pt)
         memory = a_mem if a_mem else self.scratch.a_mem
 
@@ -163,10 +195,12 @@ class LegacyRetriever(AbstractRetriever):
 
     @staticmethod
     def _cos_sim(a, b): 
+        """Deprecated: Use MemoryScoringStrategy._cos_sim instead."""
         return dot(a, b)/(norm(a)*norm(b))
 
     @staticmethod
     def _normalize_dict_floats(d, target_min, target_max):
+        """Deprecated: Use MemoryScoringStrategy.normalize instead."""
         if not d: return d
         min_val = min(val for val in d.values())
         max_val = max(val for val in d.values())
@@ -183,7 +217,4 @@ class LegacyRetriever(AbstractRetriever):
 
     @staticmethod
     def _top_highest_x_values(d, x):
-        top_v = dict(sorted(d.items(), 
-                            key=lambda item: item[1], 
-                            reverse=True)[:x])
-        return top_v
+        """Deprecated: Use scoring_strategy.select_top instead."""

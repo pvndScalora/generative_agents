@@ -6,6 +6,7 @@ This demonstrates:
 2. Building immutable context snapshots
 3. Using the cognitive pipeline
 4. Swapping cognitive modules for experimentation
+5. Using experimental strategies (memory scoring, reflection triggers)
 """
 import os
 import sys
@@ -253,6 +254,147 @@ For unit testing, you can create minimal personas without disk I/O:
         print(f"  Error: {e}")
 
 
+def demo_experimental_strategies():
+    """
+    Demo: Using pluggable strategies for experimental flexibility.
+    
+    The architecture now supports fine-grained experimentation with:
+    - Memory Scoring Strategies: How memories are ranked for retrieval
+    - Reflection Triggers: When agents generate reflections
+    """
+    print("\n" + "="*60)
+    print("DEMO 6: Experimental Strategies")
+    print("="*60)
+    
+    print("""
+The architecture supports pluggable strategies for fine-grained experimentation:
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║  MEMORY SCORING STRATEGIES                                               ║
+║  Control how memories are ranked during retrieval                        ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  LinearWeightedScoring (default)                                         ║
+║    Original paper: score = recency_w * R + relevance_w * V + importance_w * I ║
+║                                                                          ║
+║  AttentionBasedScoring                                                   ║
+║    Uses softmax to dynamically weight factors based on distribution      ║
+║                                                                          ║
+║  RecencyOnlyScoring                                                      ║
+║    Pure recency ranking - for ablation studies                           ║
+║                                                                          ║
+║  RelevanceOnlyScoring                                                    ║
+║    Pure semantic similarity - for ablation studies                       ║
+║                                                                          ║
+║  HybridRelevanceRecencyScoring                                           ║
+║    Multiplicative: score = recency * relevance                           ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║  REFLECTION TRIGGERS                                                      ║
+║  Control when agents generate reflections                                 ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  ImportanceThresholdTrigger (default)                                    ║
+║    Original paper: trigger when accumulated importance exceeds threshold ║
+║                                                                          ║
+║  EventCountTrigger                                                       ║
+║    Trigger after N events or thoughts                                    ║
+║                                                                          ║
+║  TimedTrigger                                                            ║
+║    Trigger every N simulated minutes                                     ║
+║                                                                          ║
+║  CompositeTrigger                                                        ║
+║    Combine multiple triggers with AND/OR logic                           ║
+║                                                                          ║
+║  NeverTrigger / AlwaysTrigger                                            ║
+║    For ablation studies and debugging                                    ║
+╚══════════════════════════════════════════════════════════════════════════╝
+""")
+    
+    print("EXAMPLE: Experimenting with different scoring strategies")
+    print("-"*60)
+    print("""
+    from persona.strategies import (
+        AttentionBasedScoring,
+        TimedTrigger,
+        CompositeTrigger,
+        ImportanceThresholdTrigger
+    )
+    from persona.cognitive_modules.retriever.legacy import LegacyRetriever
+    from persona.cognitive_modules.reflector.legacy import LegacyReflector
+    
+    # Create retriever with attention-based scoring
+    retriever = LegacyRetriever(
+        scratch=scratch,
+        scoring_strategy=AttentionBasedScoring(temperature=0.5)
+    )
+    
+    # Create reflector with composite trigger (importance OR time-based)
+    reflector = LegacyReflector(
+        scratch=scratch,
+        retriever=retriever,
+        trigger_strategy=CompositeTrigger(
+            triggers=[
+                ImportanceThresholdTrigger(),
+                TimedTrigger(interval_minutes=60)
+            ],
+            require_all=False  # OR logic
+        )
+    )
+    
+    # Use in PersonaFactory
+    persona = PersonaFactory.create_with_modules(
+        name="Isabella Rodriguez",
+        folder="storage/isabella",
+        retriever=retriever,
+        reflector=reflector
+    )
+""")
+    
+    # Show the actual strategy interfaces
+    try:
+        from reverie.backend_server.persona.cognitive_modules.retriever.scoring import (
+            LinearWeightedScoring,
+            AttentionBasedScoring,
+            ScoringContext,
+        )
+        from reverie.backend_server.persona.cognitive_modules.reflector.triggers import (
+            ImportanceThresholdTrigger,
+            TimedTrigger,
+            ReflectionContext,
+        )
+        
+        print("\n✓ Strategies loaded from cognitive_modules")
+        
+        # Demonstrate ScoringContext
+        scoring_ctx = ScoringContext(
+            recency_weight=1.0,
+            relevance_weight=1.0,
+            importance_weight=1.0,
+            recency_decay=0.99,
+            current_time_index=100,
+        )
+        print(f"\n  ScoringContext example: {scoring_ctx}")
+        
+        # Demonstrate ReflectionContext
+        reflection_ctx = ReflectionContext(
+            importance_trigger_max=150,
+            importance_trigger_curr=50,
+            importance_accumulated=100,
+            current_time=datetime.datetime.now(),
+            has_memories=True,
+        )
+        
+        # Test a trigger
+        trigger = ImportanceThresholdTrigger()
+        result = trigger.check(reflection_ctx)
+        print(f"\n  ImportanceThresholdTrigger check: {result.should_reflect}")
+        print(f"    Reason: {result.reason}")
+        
+    except Exception as e:
+        print(f"\n  (Strategy imports require all dependencies)")
+        print(f"  Error: {e}")
+
+
 def main():
     """Run all demos."""
     print("\n" + "#"*60)
@@ -277,6 +419,9 @@ def main():
     # Demo 5: Test personas
     demo_testing_persona()
     
+    # Demo 6: Experimental strategies (NEW!)
+    demo_experimental_strategies()
+    
     print("\n" + "="*60)
     print("DEMO COMPLETE")
     print("="*60)
@@ -288,12 +433,14 @@ Key Takeaways:
 3. Cognitive modules are swappable strategies (Strategy Pattern)
 4. State mutations are centralized in Persona, not spread across modules
 5. InMemoryRepository enables easy unit testing
+6. NEW: Pluggable strategies for memory scoring and reflection triggers
+   allow fine-grained experimentation without modifying core modules
 
-For experimentation, implement your own AbstractPlanner, AbstractRetriever, etc.
-and pass them to PersonaFactory.create_with_modules().
-""")
+For experimentation:
+  - Implement AbstractPlanner, AbstractRetriever, etc. for new cognitive approaches
+  - Use MemoryScoringStrategy for retrieval algorithm experiments
+  - Use ReflectionTrigger for reflection timing experiments""")
 
 
 if __name__ == "__main__":
     main()
-

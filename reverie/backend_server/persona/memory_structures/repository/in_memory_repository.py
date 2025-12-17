@@ -10,30 +10,8 @@ from reverie.backend_server.persona.memory_structures.spatial_memory import Memo
 from reverie.backend_server.persona.memory_structures.associative_memory import AssociativeMemory
 from reverie.backend_server.persona.memory_structures.scratch import Scratch
 from reverie.backend_server.persona.memory_structures.state import (
-    PersonaState, IdentityProfile, WorldContext, ExecutiveState,
-    ActionState, SocialContext
+    PersonaState, create_empty_persona_state
 )
-from reverie.backend_server.models import PersonaIdentity, CognitiveParams
-
-
-def _create_empty_persona_state() -> PersonaState:
-    """Create an empty PersonaState with default values."""
-    identity = PersonaIdentity(
-        name="Test Agent",
-        age=25,
-        innate="curious, helpful",
-        learned="",
-        currently="",
-        lifestyle="",
-        living_area=""
-    )
-    return PersonaState(
-        identity_profile=IdentityProfile(identity, CognitiveParams()),
-        world_context=WorldContext(),
-        executive_state=ExecutiveState(),
-        action_state=ActionState(),
-        social_context=SocialContext()
-    )
 
 
 class InMemoryRepository(MemoryRepository):
@@ -72,8 +50,12 @@ class InMemoryRepository(MemoryRepository):
     def load_scratch(self) -> Scratch:
         """Load or create empty scratch with PersonaState."""
         if self._scratch is None:
-            # Create Scratch with an empty PersonaState (new way)
-            state = _create_empty_persona_state()
+            # Create Scratch with test-friendly defaults
+            state = create_empty_persona_state(
+                name="Test Agent",
+                age=25,
+                innate="curious, helpful"
+            )
             self._scratch = Scratch(state)
         return self._scratch
     

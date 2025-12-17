@@ -24,29 +24,13 @@ from reverie.backend_server.models import (
 )
 from .state import (
     PersonaState, IdentityProfile, WorldContext, ExecutiveState, 
-    ActionState, SocialContext, MemorySystem
+    ActionState, SocialContext, MemorySystem, create_empty_persona_state
 )
 from . import state_services as svc
 
 if TYPE_CHECKING:
     from .associative_memory import AssociativeMemory
     from .spatial_memory import MemoryTree
-
-
-def _create_empty_state() -> PersonaState:
-    """Create an empty PersonaState with default values."""
-    identity = PersonaIdentity(
-        name="Placeholder Name",
-        age=0,
-        innate="", learned="", currently="", lifestyle="", living_area=""
-    )
-    return PersonaState(
-        identity_profile=IdentityProfile(identity, CognitiveParams()),
-        world_context=WorldContext(),
-        executive_state=ExecutiveState(),
-        action_state=ActionState(),
-        social_context=SocialContext()
-    )
 
 
 class Scratch:
@@ -90,7 +74,7 @@ class Scratch:
             self.state = self._legacy_parse_dict(state_or_legacy)
         else:
             # Empty state
-            self.state = _create_empty_state()
+            self.state = create_empty_persona_state()
 
     def _legacy_parse_dict(self, d: dict) -> PersonaState:
         """

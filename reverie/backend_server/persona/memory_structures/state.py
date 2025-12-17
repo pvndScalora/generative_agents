@@ -136,3 +136,36 @@ class PersonaState:
     social_context: SocialContext
     memory_system: MemorySystem = field(default_factory=MemorySystem)
 
+
+def create_empty_persona_state(
+    name: str = "Placeholder",
+    age: int = 0,
+    innate: str = ""
+) -> PersonaState:
+    """
+    Factory function to create an empty PersonaState with default values.
+    
+    Args:
+        name: Agent name (default "Placeholder")
+        age: Agent age (default 0)
+        innate: Innate traits (default "")
+        
+    Returns:
+        A new PersonaState with the specified identity and empty state.
+    """
+    identity = PersonaIdentity(
+        name=name,
+        age=age,
+        innate=innate,
+        learned="",
+        currently="",
+        lifestyle="",
+        living_area=""
+    )
+    return PersonaState(
+        identity_profile=IdentityProfile(identity, CognitiveParams()),
+        world_context=WorldContext(),
+        executive_state=ExecutiveState(),
+        action_state=ActionState(),
+        social_context=SocialContext()
+    )
