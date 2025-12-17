@@ -9,6 +9,31 @@ from .base import MemoryRepository
 from reverie.backend_server.persona.memory_structures.spatial_memory import MemoryTree
 from reverie.backend_server.persona.memory_structures.associative_memory import AssociativeMemory
 from reverie.backend_server.persona.memory_structures.scratch import Scratch
+from reverie.backend_server.persona.memory_structures.state import (
+    PersonaState, IdentityProfile, WorldContext, ExecutiveState,
+    ActionState, SocialContext
+)
+from reverie.backend_server.models import PersonaIdentity, CognitiveParams
+
+
+def _create_empty_persona_state() -> PersonaState:
+    """Create an empty PersonaState with default values."""
+    identity = PersonaIdentity(
+        name="Test Agent",
+        age=25,
+        innate="curious, helpful",
+        learned="",
+        currently="",
+        lifestyle="",
+        living_area=""
+    )
+    return PersonaState(
+        identity_profile=IdentityProfile(identity, CognitiveParams()),
+        world_context=WorldContext(),
+        executive_state=ExecutiveState(),
+        action_state=ActionState(),
+        social_context=SocialContext()
+    )
 
 
 class InMemoryRepository(MemoryRepository):
@@ -37,7 +62,7 @@ class InMemoryRepository(MemoryRepository):
     def load_associative_memory(self) -> AssociativeMemory:
         """Load or create empty associative memory."""
         if self._associative_memory is None:
-            self._associative_memory = AssociativeMemory(None)
+            self._associative_memory = AssociativeMemory()
         return self._associative_memory
     
     def save_associative_memory(self, memory: AssociativeMemory, save_folder: str):
@@ -45,9 +70,11 @@ class InMemoryRepository(MemoryRepository):
         self._associative_memory = memory
     
     def load_scratch(self) -> Scratch:
-        """Load or create empty scratch."""
+        """Load or create empty scratch with PersonaState."""
         if self._scratch is None:
-            self._scratch = Scratch(None)
+            # Create Scratch with an empty PersonaState (new way)
+            state = _create_empty_persona_state()
+            self._scratch = Scratch(state)
         return self._scratch
     
     def save_scratch(self, scratch: Scratch, save_folder: str):
