@@ -27,13 +27,20 @@ import math
 import os
 import shutil
 import traceback
+import logging
 
 from selenium import webdriver
 
-from global_methods import *
-from utils import *
+from global_methods import (
+    copyanything, 
+    check_if_file_exists, 
+    read_file_to_list
+)
+from config import *
 from maze import *
 from persona.persona import *
+# from persona.cognitive_modules.converse import load_history_via_whisper
+from logging_config import setup_logging
 
 ##############################################################################
 #                                  REVERIE                                   #
@@ -48,13 +55,13 @@ class ReverieServer:
     # Interestingly, all simulations must be forked from some initial 
     # simulation, where the first simulation is "hand-crafted".
     self.fork_sim_code = fork_sim_code
-    fork_folder = f"{fs_storage}/{self.fork_sim_code}"
+    fork_folder = f"{FS_STORAGE}/{self.fork_sim_code}"
 
     # <sim_code> indicates our current simulation. The first step here is to 
     # copy everything that's in <fork_sim_code>, but edit its 
     # reverie/meta/json's fork variable. 
     self.sim_code = sim_code
-    sim_folder = f"{fs_storage}/{self.sim_code}"
+    sim_folder = f"{FS_STORAGE}/{self.sim_code}"
     copyanything(fork_folder, sim_folder)
 
     with open(f"{sim_folder}/reverie/meta.json") as json_file:  
@@ -125,7 +132,7 @@ class ReverieServer:
       persona_folder = f"{sim_folder}/personas/{persona_name}"
       p_x = init_env[persona_name]["x"]
       p_y = init_env[persona_name]["y"]
-      curr_persona = Persona(persona_name, persona_folder)
+      curr_persona = Persona.create_from_folder(persona_name, persona_folder)
 
       self.personas[persona_name] = curr_persona
       self.personas_tile[persona_name] = (p_x, p_y)
@@ -145,12 +152,12 @@ class ReverieServer:
     # simulation. 
     curr_sim_code = dict()
     curr_sim_code["sim_code"] = self.sim_code
-    with open(f"{fs_temp_storage}/curr_sim_code.json", "w") as outfile: 
+    with open(f"{FS_TEMP_STORAGE}/curr_sim_code.json", "w") as outfile: 
       outfile.write(json.dumps(curr_sim_code, indent=2))
     
     curr_step = dict()
     curr_step["step"] = self.step
-    with open(f"{fs_temp_storage}/curr_step.json", "w") as outfile: 
+    with open(f"{FS_TEMP_STORAGE}/curr_step.json", "w") as outfile: 
       outfile.write(json.dumps(curr_step, indent=2))
 
 
@@ -166,7 +173,7 @@ class ReverieServer:
       * Saves all relevant data to the designated memory directory
     """
     # <sim_folder> points to the current simulation folder.
-    sim_folder = f"{fs_storage}/{self.sim_code}"
+    sim_folder = f"{FS_STORAGE}/{self.sim_code}"
 
     # Save Reverie meta information.
     reverie_meta = dict() 
@@ -228,7 +235,7 @@ class ReverieServer:
     while (True): 
       try: 
         curr_dict = {}
-        tester_file = fs_temp_storage + "/path_tester_env.json"
+        tester_file = FS_TEMP_STORAGE + "/path_tester_env.json"
         if check_if_file_exists(tester_file): 
           with open(tester_file) as json_file: 
             curr_dict = json.load(json_file)
@@ -265,7 +272,7 @@ class ReverieServer:
 
         # Incrementally outputting the s_mem and saving the json file. 
         print ("= " * 15)
-        out_file = fs_temp_storage + "/path_tester_out.json"
+        out_file = FS_TEMP_STORAGE + "/path_tester_out.json"
         with open(out_file, "w") as outfile: 
           outfile.write(json.dumps(s_mem, indent=2))
         print_tree(s_mem)
@@ -290,7 +297,7 @@ class ReverieServer:
       None
     """
     # <sim_folder> points to the current simulation folder.
-    sim_folder = f"{fs_storage}/{self.sim_code}"
+    sim_folder = f"{FS_STORAGE}/{self.sim_code}"
 
     # When a persona arrives at a game object, we give a unique event
     # to that object. 
@@ -428,7 +435,7 @@ class ReverieServer:
     print ("and independent decision-making.\n---")
 
     # <sim_folder> points to the current simulation folder.
-    sim_folder = f"{fs_storage}/{self.sim_code}"
+    sim_folder = f"{FS_STORAGE}/{self.sim_code}"
 
     while True: 
       sim_command = input("Enter option: ")
@@ -576,19 +583,21 @@ class ReverieServer:
 
         elif ("call -- load history" 
               in sim_command.lower()): 
-          curr_file = maze_assets_loc + "/" + sim_command[len("call -- load history"):].strip() 
+          curr_file = MAZE_ASSETS_LOC + "/" + sim_command[len("call -- load history"):].strip() 
           # call -- load history the_ville/agent_history_init_n3.csv
 
           rows = read_file_to_list(curr_file, header=True, strip_trail=True)[1]
-          clean_whispers = []
+          # clean_whispers = []
           for row in rows: 
             agent_name = row[0].strip() 
             whispers = row[1].split(";")
             whispers = [whisper.strip() for whisper in whispers]
             for whisper in whispers: 
-              clean_whispers += [[agent_name, whisper]]
+              # clean_whispers += [[agent_name, whisper]]
+              if agent_name in self.personas:
+                self.personas[agent_name].converser.receive_whisper(whisper)
 
-          load_history_via_whisper(self.personas, clean_whispers)
+          # load_history_via_whisper(self.personas, clean_whispers)
 
         print (ret_str)
 
@@ -599,6 +608,7 @@ class ReverieServer:
 
 
 if __name__ == '__main__':
+  setup_logging()
   # rs = ReverieServer("base_the_ville_isabella_maria_klaus", 
   #                    "July1_the_ville_isabella_maria_klaus-step-3-1")
   # rs = ReverieServer("July1_the_ville_isabella_maria_klaus-step-3-20", 

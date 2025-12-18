@@ -12,43 +12,40 @@ sys.path.append('../../')
 
 import json
 import datetime
-
-from global_methods import *
-
-
-class ConceptNode: 
-  def __init__(self,
-               node_id, node_count, type_count, node_type, depth,
-               created, expiration, 
-               s, p, o, 
-               description, embedding_key, poignancy, keywords, filling): 
-    self.node_id = node_id
-    self.node_count = node_count
-    self.type_count = type_count
-    self.type = node_type # thought / event / chat
-    self.depth = depth
-
-    self.created = created
-    self.expiration = expiration
-    self.last_accessed = self.created
-
-    self.subject = s
-    self.predicate = p
-    self.object = o
-
-    self.description = description
-    self.embedding_key = embedding_key
-    self.poignancy = poignancy
-    self.keywords = keywords
-    self.filling = filling
-
-
-  def spo_summary(self): 
-    return (self.subject, self.predicate, self.object)
-
+from reverie.backend_server.models import Memory, MemoryType
 
 class AssociativeMemory: 
-  def __init__(self, f_saved): 
+  """
+  The Memory Stream - core long-term memory module for generative agents.
+  
+  Stores three types of memories:
+  - Events: Things that happened ("Isabella made coffee")
+  - Thoughts: Reflections and insights ("I should invite more people to my party")
+  - Chats: Conversations with other agents
+  
+  Attributes:
+    kw_strength_event: Keyword frequency counter for events. Maps keyword -> count.
+        NOTE: Currently tracked but NOT USED in cognitive decisions. This appears
+        to be scaffolding for a feature that was never implemented (possibly for
+        keyword-based reflection triggering via kw_strg_event_reflect_th).
+    kw_strength_thought: Same as above but for thoughts.
+  """
+  
+  def __init__(self, nodes_load=None, embeddings=None, kw_strength=None): 
+    """
+    Initialize AssociativeMemory.
+    
+    Args:
+        nodes_load: Dict of node_id -> node_details to restore from disk. Default: empty.
+        embeddings: Dict of embedding_key -> embedding_vector. Default: empty.
+        kw_strength: Dict with 'kw_strength_event' and 'kw_strength_thought' keys.
+                     Default: empty counters for both.
+    """
+    # Default arguments
+    nodes_load = nodes_load or {}
+    embeddings = embeddings or {}
+    kw_strength = kw_strength or {"kw_strength_event": {}, "kw_strength_thought": {}}
+    
     self.id_to_node = dict()
 
     self.seq_event = []
@@ -59,12 +56,12 @@ class AssociativeMemory:
     self.kw_to_thought = dict()
     self.kw_to_chat = dict()
 
+    # Keyword frequency counters (tracked but currently unused in decisions)
     self.kw_strength_event = dict()
     self.kw_strength_thought = dict()
 
-    self.embeddings = json.load(open(f_saved + "/embeddings.json"))
+    self.embeddings = embeddings
 
-    nodes_load = json.load(open(f_saved + "/nodes.json"))
     for count in range(len(nodes_load.keys())): 
       node_id = f"node_{str(count+1)}"
       node_details = nodes_load[node_id]
@@ -102,14 +99,13 @@ class AssociativeMemory:
         self.add_thought(created, expiration, s, p, o, 
                    description, keywords, poignancy, embedding_pair, filling)
 
-    kw_strength_load = json.load(open(f_saved + "/kw_strength.json"))
-    if kw_strength_load["kw_strength_event"]: 
-      self.kw_strength_event = kw_strength_load["kw_strength_event"]
-    if kw_strength_load["kw_strength_thought"]: 
-      self.kw_strength_thought = kw_strength_load["kw_strength_thought"]
+    if kw_strength["kw_strength_event"]: 
+      self.kw_strength_event = kw_strength["kw_strength_event"]
+    if kw_strength["kw_strength_thought"]: 
+      self.kw_strength_thought = kw_strength["kw_strength_thought"]
 
     
-  def save(self, out_json): 
+  def get_state(self):
     r = dict()
     for count in range(len(self.id_to_node.keys()), 0, -1): 
       node_id = f"node_{str(count)}"
@@ -118,7 +114,7 @@ class AssociativeMemory:
       r[node_id] = dict()
       r[node_id]["node_count"] = node.node_count
       r[node_id]["type_count"] = node.type_count
-      r[node_id]["type"] = node.type
+      r[node_id]["type"] = node.type.value if isinstance(node.type, MemoryType) else node.type
       r[node_id]["depth"] = node.depth
 
       r[node_id]["created"] = node.created.strftime('%Y-%m-%d %H:%M:%S')
@@ -137,17 +133,15 @@ class AssociativeMemory:
       r[node_id]["keywords"] = list(node.keywords)
       r[node_id]["filling"] = node.filling
 
-    with open(out_json+"/nodes.json", "w") as outfile:
-      json.dump(r, outfile)
-
-    r = dict()
-    r["kw_strength_event"] = self.kw_strength_event
-    r["kw_strength_thought"] = self.kw_strength_thought
-    with open(out_json+"/kw_strength.json", "w") as outfile:
-      json.dump(r, outfile)
-
-    with open(out_json+"/embeddings.json", "w") as outfile:
-      json.dump(self.embeddings, outfile)
+    kw_strength = dict()
+    kw_strength["kw_strength_event"] = self.kw_strength_event
+    kw_strength["kw_strength_thought"] = self.kw_strength_thought
+    
+    return {
+        "nodes": r,
+        "kw_strength": kw_strength,
+        "embeddings": self.embeddings
+    }
 
 
   def add_event(self, created, expiration, s, p, o, 
@@ -166,12 +160,25 @@ class AssociativeMemory:
                      + " " 
                      +  description.split("(")[-1][:-1])
 
-    # Creating the <ConceptNode> object.
-    node = ConceptNode(node_id, node_count, type_count, node_type, depth,
-                       created, expiration, 
-                       s, p, o, 
-                       description, embedding_pair[0], 
-                       poignancy, keywords, filling)
+    # Creating the <Memory> object.
+    node = Memory(
+        id=node_id,
+        type=MemoryType.EVENT,
+        description=description,
+        created=created,
+        last_accessed=created,
+        subject=s,
+        predicate=p,
+        object=o,
+        poignancy=poignancy,
+        keywords=keywords,
+        embedding_key=embedding_pair[0],
+        filling=filling,
+        expiration=expiration,
+        depth=depth,
+        node_count=node_count,
+        type_count=type_count
+    )
 
     # Creating various dictionary cache for fast access. 
     self.seq_event[0:0] = [node]
@@ -211,11 +218,25 @@ class AssociativeMemory:
     except: 
       pass
 
-    # Creating the <ConceptNode> object.
-    node = ConceptNode(node_id, node_count, type_count, node_type, depth,
-                       created, expiration, 
-                       s, p, o, 
-                       description, embedding_pair[0], poignancy, keywords, filling)
+    # Creating the <Memory> object.
+    node = Memory(
+        id=node_id,
+        type=MemoryType.THOUGHT,
+        description=description,
+        created=created,
+        last_accessed=created,
+        subject=s,
+        predicate=p,
+        object=o,
+        poignancy=poignancy,
+        keywords=keywords,
+        embedding_key=embedding_pair[0],
+        filling=filling,
+        expiration=expiration,
+        depth=depth,
+        node_count=node_count,
+        type_count=type_count
+    )
 
     # Creating various dictionary cache for fast access. 
     self.seq_thought[0:0] = [node]
@@ -250,11 +271,25 @@ class AssociativeMemory:
     node_id = f"node_{str(node_count)}"
     depth = 0
 
-    # Creating the <ConceptNode> object.
-    node = ConceptNode(node_id, node_count, type_count, node_type, depth,
-                       created, expiration, 
-                       s, p, o, 
-                       description, embedding_pair[0], poignancy, keywords, filling)
+    # Creating the <Memory> object.
+    node = Memory(
+        id=node_id,
+        type=MemoryType.CHAT,
+        description=description,
+        created=created,
+        last_accessed=created,
+        subject=s,
+        predicate=p,
+        object=o,
+        poignancy=poignancy,
+        keywords=keywords,
+        embedding_key=embedding_pair[0],
+        filling=filling,
+        expiration=expiration,
+        depth=depth,
+        node_count=node_count,
+        type_count=type_count
+    )
 
     # Creating various dictionary cache for fast access. 
     self.seq_chat[0:0] = [node]
