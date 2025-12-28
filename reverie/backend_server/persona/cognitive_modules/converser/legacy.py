@@ -5,14 +5,14 @@ from typing import List, Tuple, Dict, Optional, TYPE_CHECKING
 from .base import AbstractConverser
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import get_embedding
-from reverie.backend_server.models import ConversationResult
+from models import ConversationResult
 
 if TYPE_CHECKING:
     from persona.memory_structures.scratch import Scratch
     from persona.memory_structures.associative_memory import AssociativeMemory
     from persona.cognitive_modules.retriever.base import AbstractRetriever
-    from reverie.backend_server.maze import Maze
-    from reverie.backend_server.models import AgentContext, RetrievalResult
+    from maze import Maze
+    from models import AgentContext, RetrievalResult
 
 
 class LegacyConverser(AbstractConverser):

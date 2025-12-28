@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 import datetime
-from reverie.backend_server.models import (
+from models import (
     PersonaIdentity, CognitiveParams, CurrentAction, Coordinate, Action
 )
 

@@ -11,9 +11,10 @@ sys.path.append('../../')
 
 from config import *
 from global_methods import check_if_file_exists
-from reverie.backend_server.models import SpatialMemoryTree
+from models import SpatialMemoryTree
 
 class MemoryTree: 
+  #Todo: use spatical memory as part of moving systems.
   def __init__(self, tree: SpatialMemoryTree): 
     """
     Initialize the MemoryTree with a spatial tree structure.
@@ -69,8 +70,11 @@ class MemoryTree:
     EXAMPLE STR OUTPUT
       "bedroom, kitchen, dining room, office, bathroom"
     """
-    x = ", ".join(list(self.tree[curr_world].keys()))
-    return x
+    try:
+      x = ", ".join(list(self.tree[curr_world].keys()))
+      return x
+    except (KeyError, TypeError, AttributeError):
+      return ""
 
 
   def get_str_accessible_sector_arenas(self, sector): 
@@ -88,11 +92,14 @@ class MemoryTree:
     EXAMPLE STR OUTPUT
       "bedroom, kitchen, dining room, office, bathroom"
     """
-    curr_world, curr_sector = sector.split(":")
-    if not curr_sector: 
+    try:
+      curr_world, curr_sector = sector.split(":")
+      if not curr_sector: 
+        return ""
+      x = ", ".join(list(self.tree[curr_world][curr_sector].keys()))
+      return x
+    except (KeyError, ValueError, TypeError, AttributeError):
       return ""
-    x = ", ".join(list(self.tree[curr_world][curr_sector].keys()))
-    return x
 
 
   def get_str_accessible_arena_game_objects(self, arena):
@@ -117,7 +124,11 @@ class MemoryTree:
     try: 
       x = ", ".join(list(self.tree[curr_world][curr_sector][curr_arena]))
     except: 
-      x = ", ".join(list(self.tree[curr_world][curr_sector][curr_arena.lower()]))
+      try:
+        x = ", ".join(list(self.tree[curr_world][curr_sector][curr_arena.lower()]))
+      except (KeyError, TypeError, AttributeError):
+        # Arena doesn't exist in spatial memory - return empty string
+        return ""
     return x
 
 

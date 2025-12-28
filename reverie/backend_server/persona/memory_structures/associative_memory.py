@@ -12,7 +12,7 @@ sys.path.append('../../')
 
 import json
 import datetime
-from reverie.backend_server.models import Memory, MemoryType
+from models import Memory, MemoryType
 
 class AssociativeMemory: 
   """

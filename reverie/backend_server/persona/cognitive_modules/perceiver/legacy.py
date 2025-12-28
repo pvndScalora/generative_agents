@@ -6,14 +6,14 @@ from typing import List, TYPE_CHECKING, Optional
 from .base import AbstractPerceiver
 from persona.prompt_template.gpt_structure import get_embedding
 from persona.prompt_template.run_gpt_prompt import run_gpt_prompt_event_poignancy, run_gpt_prompt_chat_poignancy
-from reverie.backend_server.models import PerceptionResult
+from models import PerceptionResult
 
 if TYPE_CHECKING:
     from persona.persona import Persona
     from persona.memory_structures.scratch import Scratch
     from persona.memory_structures.spatial_memory import MemoryTree
-    from reverie.backend_server.maze import Maze
-    from reverie.backend_server.models import AgentContext, WorldContext, Memory
+    from maze import Maze
+    from models import AgentContext, WorldContext, Memory
 
 
 class LegacyPerceiver(AbstractPerceiver):

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from reverie.backend_server.models import Memory, AgentContext, RetrievalResult
+    from models import Memory, AgentContext, RetrievalResult
     from persona.memory_structures.associative_memory import AssociativeMemory
 
 

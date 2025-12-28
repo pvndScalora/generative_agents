@@ -13,17 +13,17 @@ import os
 import datetime
 from typing import Dict, Any, Optional
 
-from reverie.backend_server.persona.memory_structures.spatial_memory import MemoryTree
-from reverie.backend_server.persona.memory_structures.associative_memory import AssociativeMemory
-from reverie.backend_server.persona.memory_structures.scratch import Scratch
-from reverie.backend_server.persona.memory_structures.state import (
+from persona.memory_structures.spatial_memory import MemoryTree
+from persona.memory_structures.associative_memory import AssociativeMemory
+from persona.memory_structures.scratch import Scratch
+from persona.memory_structures.state import (
     PersonaState, IdentityProfile, WorldContext, ExecutiveState,
     ActionState, SocialContext, MemorySystem
 )
-from reverie.backend_server.models import (
+from models import (
     PersonaIdentity, CognitiveParams, CurrentAction, Coordinate, Action
 )
-from reverie.backend_server.global_methods import check_if_file_exists
+from global_methods import check_if_file_exists
 from .base import MemoryRepository
 
 

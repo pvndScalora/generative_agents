@@ -143,6 +143,14 @@ class Memory:
     def spo_summary(self): 
         return (self.subject, self.predicate, self.object)
 
+    def __hash__(self):
+        return hash(self.id)
+    
+    def __eq__(self, other):
+        if isinstance(other, Memory):
+            return self.id == other.id
+        return False
+
 @dataclass
 class PersonaIdentity:
     """

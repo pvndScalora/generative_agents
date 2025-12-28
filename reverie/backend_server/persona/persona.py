@@ -23,14 +23,14 @@ from persona.memory_structures.spatial_memory import MemoryTree
 from persona.memory_structures.associative_memory import AssociativeMemory
 from persona.memory_structures.scratch import Scratch
 from persona.memory_structures.repository import JsonMemoryRepository, MemoryRepository, InMemoryRepository
-from reverie.backend_server.models import (
+from models import (
     AgentIdentity, AgentContext, WorldContext,
     PerceptionResult, RetrievalResult, PlanResult, ReflectionResult, ExecutionResult,
     Memory, PlanExecution
 )
 
 if TYPE_CHECKING:
-    from reverie.backend_server.maze import Maze
+    from maze import Maze
     from persona.cognitive_modules.perceiver.base import AbstractPerceiver
     from persona.cognitive_modules.retriever.base import AbstractRetriever
     from persona.cognitive_modules.planner.base import AbstractPlanner
@@ -255,7 +255,7 @@ class Persona:
     
     # Schedule updates
     if result.new_daily_schedule:
-        from reverie.backend_server.models import Action
+        from models import Action
         self.scratch.f_daily_schedule = [
             Action(description=desc, duration=dur) 
             for desc, dur in result.new_daily_schedule

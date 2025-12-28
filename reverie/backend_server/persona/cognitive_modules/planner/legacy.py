@@ -5,13 +5,13 @@ import logging
 from typing import Dict, Any, List, Tuple, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from reverie.backend_server.maze import Maze
+    from maze import Maze
     from persona.persona import Persona
     from persona.memory_structures.scratch import Scratch
-    from reverie.backend_server.models import AgentContext, WorldContext, RetrievalResult, PlanResult
+    from models import AgentContext, WorldContext, RetrievalResult, PlanResult
 
-from reverie.backend_server.models import Action
-from reverie.backend_server.persona.prompt_template.run_gpt_prompt import (
+from models import Action
+from persona.prompt_template.run_gpt_prompt import (
     run_gpt_prompt_wake_up_hour,
     run_gpt_prompt_daily_plan,
     run_gpt_prompt_generate_hourly_schedule,
@@ -29,7 +29,7 @@ from reverie.backend_server.persona.prompt_template.run_gpt_prompt import (
     run_gpt_prompt_new_decomp_schedule,
     ChatGPT_single_request
 )
-from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
+from persona.prompt_template.gpt_structure import get_embedding
 from .base import AbstractPlanner
 
 

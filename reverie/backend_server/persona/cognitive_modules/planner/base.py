@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from reverie.backend_server.maze import Maze
-    from reverie.backend_server.models import (
+    from maze import Maze
+    from models import (
         AgentContext, WorldContext, RetrievalResult, PlanResult
     )
 

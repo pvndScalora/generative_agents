@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from reverie.backend_server.maze import Maze
-    from reverie.backend_server.models import (
+    from maze import Maze
+    from models import (
         AgentContext, WorldContext, PerceptionResult, Memory
     )
     from persona.memory_structures.spatial_memory import MemoryTree

@@ -15,7 +15,7 @@ from numpy import dot, exp
 from numpy.linalg import norm
 
 if TYPE_CHECKING:
-    from reverie.backend_server.models import Memory
+    from models import Memory
 
 
 @dataclass(frozen=True)

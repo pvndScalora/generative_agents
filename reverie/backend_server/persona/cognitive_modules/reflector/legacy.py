@@ -8,7 +8,7 @@ from numpy.linalg import norm
 
 from persona.prompt_template.run_gpt_prompt import *
 from persona.prompt_template.gpt_structure import *
-from reverie.backend_server.models import ReflectionResult
+from models import ReflectionResult
 from .triggers import (
     ReflectionTrigger,
     ReflectionContext,
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from persona.memory_structures.scratch import Scratch
     from persona.memory_structures.associative_memory import AssociativeMemory
     from persona.cognitive_modules.retriever.base import AbstractRetriever
-    from reverie.backend_server.models import AgentContext
+    from models import AgentContext
 
 
 class LegacyReflector(AbstractReflector):

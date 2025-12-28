@@ -6,10 +6,10 @@ useful for unit testing and experimentation.
 """
 from typing import Optional
 from .base import MemoryRepository
-from reverie.backend_server.persona.memory_structures.spatial_memory import MemoryTree
-from reverie.backend_server.persona.memory_structures.associative_memory import AssociativeMemory
-from reverie.backend_server.persona.memory_structures.scratch import Scratch
-from reverie.backend_server.persona.memory_structures.state import (
+from persona.memory_structures.spatial_memory import MemoryTree
+from persona.memory_structures.associative_memory import AssociativeMemory
+from persona.memory_structures.scratch import Scratch
+from persona.memory_structures.state import (
     PersonaState, create_empty_persona_state
 )
 

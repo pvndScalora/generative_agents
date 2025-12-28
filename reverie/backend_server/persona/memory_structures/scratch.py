@@ -19,7 +19,7 @@ Architecture Note:
 import datetime
 from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING
 
-from reverie.backend_server.models import (
+from models import (
     PersonaIdentity, CognitiveParams, CurrentAction, Coordinate, Action
 )
 from .state import (

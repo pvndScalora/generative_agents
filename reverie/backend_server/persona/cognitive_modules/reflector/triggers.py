@@ -14,7 +14,7 @@ from typing import List, Optional, TYPE_CHECKING
 import datetime
 
 if TYPE_CHECKING:
-    from reverie.backend_server.models import Memory
+    from models import Memory
 
 
 @dataclass(frozen=True)

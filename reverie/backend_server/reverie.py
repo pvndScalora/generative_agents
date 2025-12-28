@@ -386,6 +386,11 @@ class ReverieServer:
             next_tile, pronunciatio, description = persona.move(
               self.maze, self.personas, self.personas_tile[persona_name], 
               self.curr_time)
+            # Convert next_tile to list if it's a Coordinate object
+            if hasattr(next_tile, 'as_tuple'):
+              next_tile = list(next_tile.as_tuple())
+            elif hasattr(next_tile, '__iter__') and not isinstance(next_tile, (list, tuple)):
+              next_tile = list(next_tile)
             movements["persona"][persona_name] = {}
             movements["persona"][persona_name]["movement"] = next_tile
             movements["persona"][persona_name]["pronunciatio"] = pronunciatio
@@ -405,6 +410,8 @@ class ReverieServer:
           #  "persona": {"Klaus Mueller": {"movement": [38, 12]}}, 
           #  "meta": {curr_time: <datetime>}}
           curr_move_file = f"{sim_folder}/movement/{self.step}.json"
+          # Ensure movement directory exists
+          os.makedirs(os.path.dirname(curr_move_file), exist_ok=True)
           with open(curr_move_file, "w") as outfile: 
             outfile.write(json.dumps(movements, indent=2))
 
@@ -601,9 +608,9 @@ class ReverieServer:
 
         print (ret_str)
 
-      except:
+      except Exception as e:
         traceback.print_exc()
-        print ("Error.")
+        print(f"Error: {e}")
         pass
 
 

@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from reverie.backend_server.maze import Maze
-    from reverie.backend_server.models import (
+    from maze import Maze
+    from models import (
         AgentContext, RetrievalResult, ConversationResult
     )
     from persona.memory_structures.associative_memory import AssociativeMemory

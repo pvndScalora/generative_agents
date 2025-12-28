@@ -2,8 +2,8 @@ from typing import List, Dict, Any, TYPE_CHECKING, Optional
 from numpy import dot
 from numpy.linalg import norm
 
-from reverie.backend_server.models import Memory, RetrievalResult
-from reverie.backend_server.persona.prompt_template.gpt_structure import get_embedding
+from models import Memory, RetrievalResult
+from persona.prompt_template.gpt_structure import get_embedding
 from .scoring import (
     MemoryScoringStrategy,
     LinearWeightedScoring,
@@ -14,7 +14,7 @@ from .base import AbstractRetriever
 if TYPE_CHECKING:
     from persona.memory_structures.scratch import Scratch
     from persona.memory_structures.associative_memory import AssociativeMemory
-    from reverie.backend_server.models import AgentContext
+    from models import AgentContext
 
 
 class LegacyRetriever(AbstractRetriever):

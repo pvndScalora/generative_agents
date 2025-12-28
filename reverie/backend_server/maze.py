@@ -382,6 +382,75 @@ class Maze:
         self.tiles[tile[1]][tile[0]]["events"].remove(event)
 
 
+  def get_accessible_sectors(self):
+    """
+    Returns a list of all unique sectors in the maze.
+    
+    OUTPUT:
+      A list of unique sector names.
+    EXAMPLE OUTPUT:
+      ["Isabella Rodriguez's apartment", "Hobbs Cafe", "The Rose and Crown Pub"]
+    """
+    sectors = set()
+    for row in self.tiles:
+      for tile in row:
+        if tile["sector"]:
+          sectors.add(tile["sector"])
+    return sorted(list(sectors))
+
+
+  def get_accessible_arenas(self, world, sector):
+    """
+    Returns a list of all unique arenas within a given sector.
+    
+    INPUT:
+      world: The world name (e.g., "the Ville")
+      sector: The sector name (e.g., "Isabella Rodriguez's apartment")
+    OUTPUT:
+      A list of unique arena names within that sector.
+    EXAMPLE OUTPUT:
+      ["main room", "bathroom", "kitchen"]
+    """
+    arenas = set()
+    for row in self.tiles:
+      for tile in row:
+        if tile["world"] == world and tile["sector"] == sector and tile["arena"]:
+          arenas.add(tile["arena"])
+    return sorted(list(arenas))
+
+
+  def get_accessible_objects(self, temp_address):
+    """
+    Returns a list of all accessible game objects at the given address.
+    
+    INPUT:
+      temp_address: Address in format "world:sector:arena"
+    OUTPUT:
+      A list of game object names at that location.
+    EXAMPLE OUTPUT:
+      ["bed", "desk", "closet"]
+    """
+    try:
+      parts = temp_address.split(":")
+      if len(parts) < 3:
+        return []
+      
+      world, sector, arena = parts[0], parts[1], parts[2]
+      objects = set()
+      
+      for row in self.tiles:
+        for tile in row:
+          if (tile["world"] == world and 
+              tile["sector"] == sector and 
+              tile["arena"] == arena and 
+              tile["game_object"]):
+            objects.add(tile["game_object"])
+      
+      return sorted(list(objects))
+    except Exception:
+      return []
+
+
 
 
 

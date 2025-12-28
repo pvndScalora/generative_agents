@@ -6,10 +6,10 @@ Description: Wrapper functions for calling OpenAI APIs.
 """
 import json
 import random
-import time 
+import time
 
 from config import *
-from reverie.backend_server.infra.llm import LLMService, OpenAIProvider
+from infra.llm import LLMService, OpenAIProvider
 
 # Initialize LLM Service
 provider = OpenAIProvider(api_key=OPENAI_API_KEY)

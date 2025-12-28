@@ -2,15 +2,15 @@ import random
 from typing import Dict, Any, Optional, Union, TYPE_CHECKING
 
 from .base import AbstractExecutor
-from reverie.backend_server.path_finder import path_finder
-from reverie.backend_server.config import COLLISION_BLOCK_ID
-from reverie.backend_server.models import PlanExecution, ExecutionResult
+from path_finder import path_finder
+from config import COLLISION_BLOCK_ID
+from models import PlanExecution, ExecutionResult
 
 if TYPE_CHECKING:
     from persona.persona import Persona
     from persona.memory_structures.scratch import Scratch
-    from reverie.backend_server.maze import Maze
-    from reverie.backend_server.models import AgentContext, PlanResult
+    from maze import Maze
+    from models import AgentContext, PlanResult
 
 
 class LegacyExecutor(AbstractExecutor):
